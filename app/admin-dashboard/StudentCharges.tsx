@@ -15,6 +15,7 @@ import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRef } from "react";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { VIBE } from "../../constants/admin-dashboard/ManageFeesStyles";
@@ -75,8 +76,9 @@ export default function StudentCharges() {
   const cardWidth = (width - 60) / numColumns;
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
-      <StatusBar barStyle="dark-content" />
+    <TierProtectedRoute featureId="admin_other_charges">
+      <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+        <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <LinearGradient
           colors={[primaryBrand, secondaryBrand]}
@@ -150,6 +152,7 @@ export default function StudentCharges() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

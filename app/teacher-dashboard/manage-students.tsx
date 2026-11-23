@@ -125,8 +125,35 @@ export default function TeacherManageStudentsScreen() {
       const snap = await getDocs(q);
       if (!isMounted.current) return;
 
+      const studentUids = snap.docs.map((d) => d.id);
+      let feeRecordMap: Record<string, number> = {};
+
+      if (studentUids.length > 0) {
+        try {
+          const feeQ = query(
+            collection(db, "studentFeeRecords"),
+            where("studentUid", "in", studentUids.slice(0, 30))
+          );
+          const feeSnap = await getDocs(feeQ);
+          feeSnap.docs.forEach((fDoc) => {
+            const fData = fDoc.data() as any;
+            if (fData.studentUid && fData.balance !== undefined) {
+              feeRecordMap[fData.studentUid] = Math.max(0, fData.balance);
+            }
+          });
+        } catch (feeErr) {
+          console.warn("Fee records query ignored:", feeErr);
+        }
+      }
+
       const list: StudentData[] = snap.docs.map((d) => {
         const data = d.data() as any;
+        const tuitionBal = feeRecordMap[d.id] !== undefined
+          ? feeRecordMap[d.id]
+          : Math.max(0, data.balance || 0);
+        const dailyArr = Math.max(0, data.dailyArrears || 0);
+        const totalFeeBal = tuitionBal + dailyArr;
+
         return {
           uid: d.id,
           parentLinkCode:
@@ -156,6 +183,9 @@ export default function TeacherManageStudentsScreen() {
           dateOfBirth: data.dateOfBirth || data.profile?.dob,
           photoURL: data.photoURL || data.profile?.photoURL,
           parentUids: data.parentUids || [],
+          tuitionBalance: tuitionBal,
+          dailyArrears: dailyArr,
+          totalFeeBalance: totalFeeBal,
         };
       });
 

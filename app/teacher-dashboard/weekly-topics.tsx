@@ -29,6 +29,8 @@ import { CurriculumBrowserModal } from "../../components/teacher-dashboard/Curri
 import { getPedagogySuggestions } from "../../constants/Pedagogy";
 import { useToast } from "../../contexts/ToastContext";
 import { copyToClipboard } from "../../utils/copyToClipboard";
+import { SCHOOL_CONFIG } from "../../constants/Config";
+import { normalizeCategory } from "../../constants/tierPermissions";
 import { useRef } from "react";
 
 export default function WeeklyTopicsScreen() {
@@ -37,8 +39,10 @@ export default function WeeklyTopicsScreen() {
   const { showToast } = useToast();
   const isWeb = Platform.OS === "web";
   const isLargeScreen = width > 768;
+  const isPlatinumSchool = normalizeCategory(SCHOOL_CONFIG.category) === "platinum";
 
   const [isViewMode, setIsViewMode] = useState(false);
+  const [isSimpleMode, setIsSimpleMode] = useState(isPlatinumSchool);
 
   const {
     loading,
@@ -464,45 +468,71 @@ Curriculum: ${curriculum}
                 <View style={styles.curriculumBadge}>
                   <Text style={styles.curriculumBadgeText}>{curriculum} CURRICULUM</Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => setIsViewMode(true)}
-                  style={styles.cardViewBtn}
-                >
-                  <SVGIcon name="document-text-outline" size={15} color={COLORS.primary} />
-                  <Text style={styles.cardViewBtnText}>View Lesson Plan</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => setIsSimpleMode(!isSimpleMode)}
+                    style={[styles.cardViewBtn, isSimpleMode && { backgroundColor: COLORS.primary + "15" }]}
+                  >
+                    <SVGIcon name={isSimpleMode ? "flash" : "list"} size={15} color={COLORS.primary} />
+                    <Text style={styles.cardViewBtnText}>
+                      {isSimpleMode ? "Simple Entry (Topic & Activity)" : "Full Standards"}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setIsViewMode(true)}
+                    style={styles.cardViewBtn}
+                  >
+                    <SVGIcon name="document-text-outline" size={15} color={COLORS.primary} />
+                    <Text style={styles.cardViewBtnText}>View Lesson Plan</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>{labels.topic}</Text>
+                <Text style={styles.inputLabel}>TOPIC / LESSON THEME *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder={`Enter the main ${labels.topic.toLowerCase()}...`}
+                  placeholder="Key in the main lesson topic..."
                   value={topicData.topic}
                   onChangeText={(text) => setTopicData({ ...topicData, topic: text })}
                 />
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 15, marginBottom: 25 }}>
-                <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
-                  <Text style={styles.inputLabel}>{labels.strand}</Text>
-                  <TextInput
-                    style={[styles.input, { fontSize: 14 }]}
-                    placeholder={labels.strand}
-                    value={topicData.strand}
-                    onChangeText={(text) => setTopicData({ ...topicData, strand: text })}
-                  />
-                </View>
-                <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
-                  <Text style={styles.inputLabel}>{labels.subStrand}</Text>
-                  <TextInput
-                    style={[styles.input, { fontSize: 14 }]}
-                    placeholder={labels.subStrand}
-                    value={topicData.subStrand}
-                    onChangeText={(text) => setTopicData({ ...topicData, subStrand: text })}
-                  />
-                </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>ACTIVITY REQUIRED / SUB-TOPICS *</Text>
+                <TextInput
+                  style={[styles.input, { minHeight: 90, textAlignVertical: "top" }]}
+                  placeholder="Key in the required lesson activities, experiments, or tasks..."
+                  value={topicData.subTopics}
+                  onChangeText={(text) => setTopicData({ ...topicData, subTopics: text })}
+                  multiline
+                />
               </View>
+
+              {!isSimpleMode && (
+                <>
+                  <View style={{ flexDirection: 'row', gap: 15, marginBottom: 25 }}>
+                    <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
+                      <Text style={styles.inputLabel}>{labels.strand}</Text>
+                      <TextInput
+                        style={[styles.input, { fontSize: 14 }]}
+                        placeholder={labels.strand}
+                        value={topicData.strand}
+                        onChangeText={(text) => setTopicData({ ...topicData, strand: text })}
+                      />
+                    </View>
+                    <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
+                      <Text style={styles.inputLabel}>{labels.subStrand}</Text>
+                      <TextInput
+                        style={[styles.input, { fontSize: 14 }]}
+                        placeholder={labels.subStrand}
+                        value={topicData.subStrand}
+                        onChangeText={(text) => setTopicData({ ...topicData, subStrand: text })}
+                      />
+                    </View>
+                  </View>
+                </>
+              )}
 
               <View style={styles.inputGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>

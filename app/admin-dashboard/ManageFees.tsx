@@ -123,6 +123,8 @@ export default function ManageFees() {
     setPaymentMethod,
     paymentDate,
     setPaymentDate,
+    paymentCategory,
+    setPaymentCategory,
     canView,
     canEdit,
     isSuperAdmin,
@@ -208,6 +210,7 @@ export default function ManageFees() {
         setReceivedFrom("");
         setPaymentMethod("Cash");
         setPaymentDate(new Date());
+        setPaymentCategory("general");
         return true;
       }
       if (dailyModalVisible) {
@@ -593,6 +596,7 @@ export default function ManageFees() {
           setReceivedFrom("");
           setPaymentMethod("Cash");
           setPaymentDate(new Date());
+          setPaymentCategory("general");
         }}
         selectedStudent={selectedStudent}
         paymentAmount={paymentAmount}
@@ -603,6 +607,8 @@ export default function ManageFees() {
         setPaymentDate={setPaymentDate}
         paymentMethod={paymentMethod}
         setPaymentMethod={setPaymentMethod}
+        paymentCategory={paymentCategory}
+        setPaymentCategory={setPaymentCategory}
         onConfirm={handleLogPayment}
         onDeletePayment={(payment) =>
           handleDeletePayment(selectedStudent, payment)

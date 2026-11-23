@@ -152,6 +152,13 @@ export default function StudentDashboard() {
           path: "/coding-robotics",
         },
         {
+          title: "Robotics Lab",
+          subtitle: "Learn, Build, Code & Create",
+          icon: "hardware-chip",
+          color: "#0EA5E9",
+          path: "/robotics-lab",
+        },
+        {
           title: "Dictionary Hub",
           subtitle: "Meanings & Audio",
           icon: "book-outline",

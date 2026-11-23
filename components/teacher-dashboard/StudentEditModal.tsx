@@ -90,6 +90,9 @@ export interface StudentData {
     lastName: string;
     phone: string;
   }>;
+  tuitionBalance?: number;
+  dailyArrears?: number;
+  totalFeeBalance?: number;
 }
 
 interface StudentEditModalProps {
@@ -350,6 +353,48 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
                 </TouchableOpacity>
               </View>
             ) : null}
+
+            {/* TOTAL FEE BALANCE SUMMARY CARD FOR TEACHER VIEW */}
+            <View style={styles.feeCard}>
+              <View style={styles.feeCardHeader}>
+                <SVGIcon name="wallet" size={20} color={COLORS.primary} />
+                <Text style={styles.feeCardTitle}>STUDENT FEE BALANCE SUMMARY</Text>
+              </View>
+
+              <View style={styles.feeRow}>
+                <Text style={styles.feeLabel}>Tuition / General Fees Balance:</Text>
+                <Text style={styles.feeVal}>
+                  ₵{(student?.tuitionBalance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              <View style={styles.feeRow}>
+                <Text style={styles.feeLabel}>Daily Collection Arrears (Feeding/Bus/Extra):</Text>
+                <Text style={styles.feeVal}>
+                  ₵{(student?.dailyArrears || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              <View style={styles.feeDivider} />
+
+              <View style={styles.feeRowTotal}>
+                <Text style={styles.feeTotalLabel}>TOTAL OUTSTANDING BALANCE:</Text>
+                <Text
+                  style={[
+                    styles.feeTotalVal,
+                    { color: (student?.totalFeeBalance || 0) > 0 ? "#EF4444" : "#10B981" },
+                  ]}
+                >
+                  ₵{(student?.totalFeeBalance || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              <View style={[styles.feeStatusTag, { backgroundColor: (student?.totalFeeBalance || 0) > 0 ? "#FEF2F2" : "#ECFDF5" }]}>
+                <Text style={[styles.feeStatusText, { color: (student?.totalFeeBalance || 0) > 0 ? "#DC2626" : "#059669" }]}>
+                  {(student?.totalFeeBalance || 0) > 0 ? "🔴 OWING OUTSTANDING BALANCE" : "🟢 FEES FULLY SETTLED"}
+                </Text>
+              </View>
+            </View>
 
             {/* PROFILE IMAGE SECTION */}
             <View style={styles.avatarSection}>
@@ -838,5 +883,72 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "800",
     fontSize: 15,
+  },
+  feeCard: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 20,
+    ...SHADOWS.light,
+  },
+  feeCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  feeCardTitle: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: COLORS.primary,
+    letterSpacing: 0.5,
+  },
+  feeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  feeLabel: {
+    fontSize: 12,
+    color: "#475569",
+    fontWeight: "600",
+  },
+  feeVal: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  feeDivider: {
+    height: 1,
+    backgroundColor: "#CBD5E1",
+    marginVertical: 8,
+  },
+  feeRowTotal: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  feeTotalLabel: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  feeTotalVal: {
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  feeStatusTag: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  feeStatusText: {
+    fontSize: 11,
+    fontWeight: "900",
   },
 });

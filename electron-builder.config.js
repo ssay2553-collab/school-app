@@ -49,12 +49,12 @@ const schools = {
   },
   kent: {
     appId: "com.saysmanage.martbeck",
-    productName: "World Sage",
+    productName: "Yamin International",
     icon: "assets/icon-sage.png",
   },
   bishops: {
     appId: "com.saysmanage.firstapp",
-    productName: "Bishop App",
+    productName: "Mighty Institute",
     icon: "assets/icon-bishop.png",
   },
   bms: {
@@ -64,7 +64,7 @@ const schools = {
   },
   model: {
     appId: "com.saysmanage.modelpower",
-    productName: "Model Power",
+    productName: "Kingsdee Memorial",
     icon: "assets/icon-modelpower.png",
   },
   brain: {

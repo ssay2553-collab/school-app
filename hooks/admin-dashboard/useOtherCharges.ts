@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { Alert, Platform } from "react-native";
 import {
   collection,
@@ -272,6 +272,52 @@ export const useOtherCharges = ({
     }
   }, []);
 
+  const studentBilledItems = useMemo(() => {
+    if (!history || history.length === 0) return [];
+    const itemMap: Record<string, { category: string; billed: number; paid: number; balance: number }> = {};
+
+    history.forEach((h: any) => {
+      const cat = (h.otherCategory || h.categoryName || "Other Charges").trim();
+      if (!itemMap[cat]) {
+        itemMap[cat] = { category: cat, billed: 0, paid: 0, balance: 0 };
+      }
+      const amt = Number(h.amount) || 0;
+      if (h.type === "other") {
+        itemMap[cat].billed += amt;
+      } else if (h.type === "other_payment") {
+        itemMap[cat].paid += amt;
+      }
+    });
+
+    Object.values(itemMap).forEach((item) => {
+      item.balance = item.billed - item.paid;
+    });
+
+    return Object.values(itemMap);
+  }, [history]);
+
+  const allAvailableItems = useMemo(() => {
+    const map: Record<string, { category: string; billed: number; paid: number; balance: number }> = {};
+
+    studentBilledItems.forEach((item) => {
+      map[item.category.toLowerCase()] = { ...item };
+    });
+
+    appliedCharges.forEach((ac: any) => {
+      const key = (ac.category || "").toLowerCase().trim();
+      if (key && !map[key]) {
+        map[key] = {
+          category: ac.category,
+          billed: Number(ac.amount) || 0,
+          paid: 0,
+          balance: Number(ac.amount) || 0,
+        };
+      }
+    });
+
+    return Object.values(map);
+  }, [studentBilledItems, appliedCharges]);
+
   const handleLogPayment = async () => {
     const student = selectedStudent;
     if (!student) return false;
@@ -345,12 +391,13 @@ export const useOtherCharges = ({
       // Propagate changes to future terms
       propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'other').catch(console.error);
 
+      const catLabel = chargeType.trim() ? `Other Charges (${chargeType.trim()})` : "Other Charges";
       notifyStudentAndParentsPayment({
         studentUid: student.uid,
         studentName: student.fullName,
         amount,
         receiptNo: serial,
-        paymentType: "Other Charges",
+        paymentType: catLabel,
         senderUid: appUser?.uid || "admin",
         senderName: appUser?.displayName || "School Accounts",
       }).catch((e) => console.error(e));
@@ -1002,6 +1049,8 @@ export const useOtherCharges = ({
     classes,
     stats,
     appliedCharges,
+    studentBilledItems,
+    allAvailableItems,
     history,
     loadingHistory,
     fetchStudents,

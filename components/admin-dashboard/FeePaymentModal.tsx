@@ -34,6 +34,8 @@ interface FeePaymentModalProps {
   setPaymentDate: (date: Date) => void;
   paymentMethod: "Cash" | "Cheque" | "E-cash" | "Momo";
   setPaymentMethod: (method: "Cash" | "Cheque" | "E-cash" | "Momo") => void;
+  paymentCategory?: string;
+  setPaymentCategory?: (cat: string) => void;
   onConfirm: () => void;
   onDeletePayment: (payment: any) => void;
   saving: boolean;
@@ -52,6 +54,8 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
   setPaymentDate,
   paymentMethod,
   setPaymentMethod,
+  paymentCategory = "general",
+  setPaymentCategory,
   onConfirm,
   onDeletePayment,
   saving,
@@ -59,6 +63,65 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
 }) => {
   const [showPaymentDatePicker, setShowPaymentDatePicker] =
     React.useState(false);
+
+  const tuitionBal = Math.max(
+    0,
+    (Number(selectedStudent?.currentBalance) || 0) -
+      (Number(selectedStudent?.ptaBalance) || 0) -
+      (Number(selectedStudent?.admissionBalance) || 0) -
+      (Number(selectedStudent?.maintenanceBalance) || 0) -
+      (Number(selectedStudent?.booksBalance) || 0) -
+      (Number(selectedStudent?.uniformBalance) || 0) -
+      (Number(selectedStudent?.otherBalance) || 0),
+  );
+
+  const otherSubItems = React.useMemo(() => {
+    if (!selectedStudent?.payments || !Array.isArray(selectedStudent.payments)) return [];
+    const itemMap: Record<string, { category: string; billed: number; paid: number; balance: number }> = {};
+
+    selectedStudent.payments.forEach((p: any) => {
+      const type = (p.type || "").toLowerCase().trim();
+      const rawCat = (p.otherCategory || p.categoryName || "").trim();
+      if (
+        type === "other" ||
+        type === "other_payment" ||
+        (rawCat && !["tuition", "pta", "maintenance", "admission", "books", "uniform"].includes(rawCat.toLowerCase()))
+      ) {
+        const cat = rawCat || "Other Charges";
+        if (!itemMap[cat]) {
+          itemMap[cat] = { category: cat, billed: 0, paid: 0, balance: 0 };
+        }
+        const amt = Number(p.amount) || 0;
+        if (type === "other") {
+          itemMap[cat].billed += amt;
+        } else if (type === "other_payment") {
+          itemMap[cat].paid += amt;
+        }
+      }
+    });
+
+    Object.values(itemMap).forEach((item) => {
+      item.balance = item.billed - item.paid;
+    });
+
+    return Object.values(itemMap);
+  }, [selectedStudent]);
+
+  const categories = [
+    { key: "general", label: "General Fee (Waterfall)", amount: selectedStudent?.currentBalance || 0 },
+    { key: "tuition", label: "Tuition Fee", amount: tuitionBal },
+    { key: "pta", label: "PTA Dues", amount: selectedStudent?.ptaBalance || 0 },
+    { key: "maintenance", label: "Maintenance Dues", amount: selectedStudent?.maintenanceBalance || 0 },
+    { key: "admission", label: "Admission Fee", amount: selectedStudent?.admissionBalance || 0 },
+    { key: "books", label: "Books / Stationary", amount: selectedStudent?.booksBalance || 0 },
+    { key: "uniform", label: "Uniform Fee", amount: selectedStudent?.uniformBalance || 0 },
+    { key: "other", label: "Other Charges (All)", amount: selectedStudent?.otherBalance || 0 },
+    ...otherSubItems.map((sub) => ({
+      key: `other:${sub.category}`,
+      label: `Other: ${sub.category}`,
+      amount: sub.balance > 0 ? sub.balance : 0,
+    })),
+  ];
 
   return (
     <Modal
@@ -104,6 +167,77 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
             contentContainerStyle={{ paddingBottom: 40 }}
             nestedScrollEnabled={true}
           >
+            <View style={{ marginTop: 8, marginBottom: 14 }}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: VIBE.text, marginBottom: 8 }}>
+                Target Fee Category
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingRight: 10, gap: 6 }}
+              >
+                {categories.map((cat) => {
+                  const isSelected = (paymentCategory || "general") === cat.key;
+                  const amtText = `₵${Number(cat.amount || 0).toFixed(0)}`;
+                  return (
+                    <TouchableOpacity
+                      key={cat.key}
+                      style={[
+                        {
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 20,
+                          backgroundColor: isSelected ? VIBE.primary : "#F1F5F9",
+                          borderWidth: 1,
+                          borderColor: isSelected ? VIBE.primary : "#E2E8F0",
+                          flexDirection: "row",
+                          alignItems: "center",
+                        },
+                        Platform.OS === "web" && ({ cursor: "pointer" } as any),
+                      ]}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        if (setPaymentCategory) setPaymentCategory(cat.key);
+                        if (cat.amount > 0 && cat.key !== "general") {
+                          setPaymentAmount(cat.amount.toString());
+                        }
+                      }}
+                      disabled={!canEdit}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: "700",
+                          color: isSelected ? "#FFFFFF" : VIBE.text,
+                        }}
+                      >
+                        {cat.label}
+                      </Text>
+                      <View
+                        style={{
+                          marginLeft: 6,
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          borderRadius: 10,
+                          backgroundColor: isSelected ? "rgba(255,255,255,0.25)" : "#CBD5E1",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            fontWeight: "800",
+                            color: isSelected ? "#FFFFFF" : "#334155",
+                          }}
+                        >
+                          {amtText}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
             <View style={styles.modalInputs}>
               <TextInput
                 style={styles.pillInput}

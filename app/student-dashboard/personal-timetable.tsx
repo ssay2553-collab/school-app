@@ -28,6 +28,9 @@ import { db } from "../../firebaseConfig";
 import { useRouter } from "expo-router";
 import { useToast } from "../../contexts/ToastContext";
 import { useRef } from "react";
+import { SCHOOL_CONFIG } from "../../constants/Config";
+import { normalizeCategory } from "../../constants/tierPermissions";
+import { SHS_PROGRAMS } from "../../constants/Curriculum";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const CACHE_KEY = "personal_timetable_cache";
@@ -48,6 +51,8 @@ const PersonalTimetable = () => {
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
+  const isPlatinumSchool = normalizeCategory(SCHOOL_CONFIG.category) === "platinum";
+  const [selectedShsProgram, setSelectedShsProgram] = useState<string>("core");
   const [timetable, setTimetable] = useState<PersonalTimetableData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -307,6 +312,47 @@ const PersonalTimetable = () => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Add Subject 📚</Text>
             <TextInput style={styles.input} placeholder="e.g. Mathematics" placeholderTextColor="#94A3B8" value={tempSubject} onChangeText={setTempSubject} />
+
+            {isPlatinumSchool && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={styles.shsModalLabel}>QUICK SELECT SHS SUBJECTS</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+                  <View style={{ flexDirection: "row", gap: 6 }}>
+                    {Object.values(SHS_PROGRAMS).map((prog) => (
+                      <TouchableOpacity
+                        key={prog.id}
+                        onPress={() => setSelectedShsProgram(prog.id)}
+                        style={[
+                          styles.shsTabChip,
+                          selectedShsProgram === prog.id && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+                        ]}
+                      >
+                        <Text style={[styles.shsTabChipText, selectedShsProgram === prog.id && { color: "#fff" }]}>
+                          {prog.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: "row", gap: 6 }}>
+                    {(SHS_PROGRAMS[selectedShsProgram]?.subjects || []).map((s) => (
+                      <TouchableOpacity
+                        key={s}
+                        onPress={() => setTempSubject(s)}
+                        style={[
+                          styles.subChip,
+                          tempSubject === s && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+                        ]}
+                      >
+                        <Text style={[styles.subChipText, tempSubject === s && { color: "#fff" }]}>{s}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            )}
             {Platform.OS === 'web' ? (
               <View style={styles.timePickerBtn}>
                 <SVGIcon name="time" size={20} color={COLORS.primary} />
@@ -436,6 +482,11 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: "#fff", borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 30, ...SHADOWS.large },
   modalTitle: { fontSize: 22, fontWeight: "900", color: "#0F172A", marginBottom: 20, textAlign: "center" },
   input: { backgroundColor: "#F1F5F9", padding: 15, borderRadius: 15, fontSize: 16, marginBottom: 20, fontWeight: '600' },
+  shsModalLabel: { fontSize: 10, fontWeight: "900", color: "#64748B", marginBottom: 6, letterSpacing: 0.8 },
+  shsTabChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: "#F1F5F9", borderWidth: 1, borderColor: "#E2E8F0" },
+  shsTabChipText: { fontSize: 11, fontWeight: "800", color: "#475569" },
+  subChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "#fff", borderWidth: 1, borderColor: "#CBD5E1" },
+  subChipText: { fontSize: 12, fontWeight: "700", color: "#1E293B" },
   timePickerBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#F1F5F9", padding: 15, borderRadius: 15, marginBottom: 30 },
   timePickerText: { marginLeft: 15, fontSize: 18, fontWeight: "bold", color: COLORS.primary },
   modalButtons: { flexDirection: "row", gap: 15 },

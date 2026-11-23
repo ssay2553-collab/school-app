@@ -1,4 +1,4 @@
-export type SchoolCategory = "core" | "nova" | "premium";
+export type SchoolCategory = "core" | "nova" | "premium" | "platinum";
 
 export const BLOCKED_FEATURES_BY_TIER: Record<SchoolCategory, Set<string>> = {
   core: new Set([
@@ -44,7 +44,6 @@ export const BLOCKED_FEATURES_BY_TIER: Record<SchoolCategory, Set<string>> = {
 
     // Teacher features blocked in Nova (staff attendance enabled for Nova)
     "teacher_study_group",
-    "teacher_coding_robotics",
     "teacher_broadcasts",
     "teacher_staff_chat",
     "teacher_parent_chat",
@@ -54,6 +53,19 @@ export const BLOCKED_FEATURES_BY_TIER: Record<SchoolCategory, Set<string>> = {
   ]),
 
   premium: new Set([]),
+
+  platinum: new Set([
+    // Admin dashboard features blocked in Platinum
+    "admin_daily_financials",
+    "admin_other_charges",
+    "admin_financial_summary",
+
+    // Teacher features blocked in Platinum
+    "teacher_behavioral_remarks",
+
+    // Parent features blocked in Platinum
+    "parent_behavioral_remarks",
+  ]),
 };
 
 /**
@@ -64,6 +76,8 @@ export const normalizeCategory = (cat?: string): SchoolCategory => {
   const lower = cat.trim().toLowerCase();
   if (lower.includes("core")) return "core";
   if (lower.includes("nova")) return "nova";
+  if (lower.includes("platinum")) return "platinum";
+  if (lower.includes("premium")) return "premium";
   return "premium";
 };
 
@@ -75,6 +89,6 @@ export const isFeatureEnabled = (
   featureId: string,
 ): boolean => {
   const normCat = normalizeCategory(category || undefined);
-  const blockedSet = BLOCKED_FEATURES_BY_TIER[normCat] || BLOCKED_FEATURES_BY_TIER.premium;
+  const blockedSet = BLOCKED_FEATURES_BY_TIER[normCat] || BLOCKED_FEATURES_BY_TIER.platinum;
   return !blockedSet.has(featureId);
 };

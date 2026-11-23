@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS } from "../../constants/theme";
 import { useAcademicConfig } from "../../contexts/AcademicContext";
@@ -214,8 +215,9 @@ export default function FinancialSummary() {
   const netBalance = totalRevenue - totalExpenditure;
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom", "left", "right"]}>
-      <StatusBar barStyle="dark-content" />
+    <TierProtectedRoute featureId="admin_financial_summary">
+      <SafeAreaView style={styles.container} edges={["top", "bottom", "left", "right"]}>
+        <StatusBar barStyle="dark-content" />
       {loading ? (
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={COLORS.primary} />
@@ -392,5 +394,6 @@ export default function FinancialSummary() {
         </ScrollView>
       )}
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }

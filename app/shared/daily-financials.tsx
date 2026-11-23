@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -411,8 +412,9 @@ export default function DailyFinancials() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
-      <StatusBar barStyle="dark-content" />
+    <TierProtectedRoute featureId="admin_daily_financials">
+      <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+        <StatusBar barStyle="dark-content" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -634,6 +636,7 @@ export default function DailyFinancials() {
         </ScrollView>
       )}
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

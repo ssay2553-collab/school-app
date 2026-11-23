@@ -20,6 +20,7 @@ import {
 import * as Animatable from "react-native-animatable";
 import { Calendar } from "react-native-calendars";
 import SVGIcon from "../components/SVGIcon";
+import { TierProtectedRoute } from "../components/TierProtectedRoute";
 import { COLORS, SHADOWS } from "../constants/theme";
 import { useAcademicCalendar } from "../hooks/useAcademicCalendar";
 
@@ -82,7 +83,8 @@ export default function AcademicCalendar() {
     } = useAcademicCalendar();
 
     return (
-        <SafeAreaView style={styles.container}>
+        <TierProtectedRoute featureId="admin_term_calendar">
+            <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -618,6 +620,7 @@ export default function AcademicCalendar() {
                 />
             )}
         </SafeAreaView>
+    </TierProtectedRoute>
     );
 }
 

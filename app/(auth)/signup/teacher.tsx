@@ -33,7 +33,14 @@ import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
 import { auth, db } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
-import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, MONTESSORI_SUBJECTS, CurriculumType } from "../../../constants/Curriculum";
+import {
+  GES_SUBJECTS,
+  CAMBRIDGE_SUBJECTS,
+  MONTESSORI_SUBJECTS,
+  SHS_PROGRAMS,
+  CurriculumType,
+} from "../../../constants/Curriculum";
+import { normalizeCategory } from "../../../constants/tierPermissions";
 import { sortClasses } from "../../../utils/classSorting";
 
 const COLORS = { ...THEME_COLORS, gold: "#FFD700", orange: "#FFA500" };
@@ -44,12 +51,14 @@ export default function TeacherSignupScreen() {
   const primary = SCHOOL_CONFIG.primaryColor;
   const schoolId = SCHOOL_CONFIG.schoolId;
   const surface = SCHOOL_CONFIG.surfaceColor;
-  
+  const isPlatinumSchool = normalizeCategory(SCHOOL_CONFIG.category) === "platinum";
+
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ surname: "", firstName: "", phone: "", email: "", password: "", confirmPassword: "", signupCode: "" });
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [curriculum, setCurriculum] = useState<CurriculumType>("GES");
+  const [selectedShsProgram, setSelectedShsProgram] = useState<string>("core");
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [otherSubjects, setOtherSubjects] = useState<string[]>([]);
   const [showOtherModal, setShowOtherModal] = useState(false);
@@ -167,7 +176,7 @@ export default function TeacherSignupScreen() {
         status: "active",
         classes: selectedClasses,
         subjects: [...selectedSubjects, ...otherSubjects],
-        curriculum: curriculum,
+        curriculum: isPlatinumSchool ? "SHS" : curriculum,
         profile: {
           firstName: form.firstName.trim(),
           lastName: form.surname.trim(),
@@ -217,6 +226,14 @@ export default function TeacherSignupScreen() {
     </View>
   );
 
+  const handleBackToLogin = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(auth)/login/teacher");
+    }
+  };
+
   const subjectList =
     curriculum === "GES" ? GES_SUBJECTS :
     curriculum === "Cambridge" ? CAMBRIDGE_SUBJECTS :
@@ -227,6 +244,17 @@ export default function TeacherSignupScreen() {
       <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.topNavRow}>
+            <TouchableOpacity
+              onPress={handleBackToLogin}
+              style={styles.topBackBtn}
+              activeOpacity={0.7}
+            >
+              <SVGIcon name="arrow-back" size={20} color="#0F172A" />
+              <Text style={styles.topBackText}>Back to Login</Text>
+            </TouchableOpacity>
+          </View>
+
           <Animatable.View animation="fadeInDown" style={styles.header}>
             <Text style={styles.title}>Teacher Registry</Text>
             <Text style={styles.subtitle}>Step {step} of 3</Text>
@@ -250,29 +278,112 @@ export default function TeacherSignupScreen() {
             <Animatable.View animation="fadeInRight" style={styles.stepContainer}>
                <Text style={styles.sectionTitle}>Assign Classes</Text>
                <View style={styles.chipGrid}>{classes.map(c => <Chip key={c.id} label={c.name} active={selectedClasses.includes(c.id)} onPress={() => setSelectedClasses(prev => prev.includes(c.id) ? prev.filter(i => i !== c.id) : [...prev, c.id])} activeColor={primary} />)}</View>
-               
-               <Text style={styles.sectionTitle}>Select Curriculum</Text>
-               <View style={styles.curriculumRow}>
-                  <TouchableOpacity onPress={() => { setCurriculum("GES"); setSelectedSubjects([]); setOtherSubjects([]); }} style={[styles.curriculumBtn, curriculum === "GES" && { backgroundColor: primary, borderColor: primary }]}>
-                    <Text style={[styles.curriculumText, curriculum === "GES" && { color: "#fff" }]}>GES (National)</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => { setCurriculum("Cambridge"); setSelectedSubjects([]); setOtherSubjects([]); }} style={[styles.curriculumBtn, curriculum === "Cambridge" && { backgroundColor: primary, borderColor: primary }]}>
-                    <Text style={[styles.curriculumText, curriculum === "Cambridge" && { color: "#fff" }]}>Cambridge (IGCSE)</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => { setCurriculum("Montessori"); setSelectedSubjects([]); setOtherSubjects([]); }} style={[styles.curriculumBtn, curriculum === "Montessori" && { backgroundColor: primary, borderColor: primary }]}>
-                    <Text style={[styles.curriculumText, curriculum === "Montessori" && { color: "#fff" }]}>Montessori</Text>
-                  </TouchableOpacity>
-               </View>
 
-               <Text style={styles.sectionTitle}>{curriculum} Subjects</Text>
-               <View style={styles.chipGrid}>
-                 {subjectList.map(s => <Chip key={s} label={s} active={selectedSubjects.includes(s)} onPress={() => setSelectedSubjects(prev => prev.includes(s) ? prev.filter(i => i !== s) : [...prev, s])} activeColor={primary} />)}
-                 {otherSubjects.map(s => <Chip key={s} label={s} active={true} onPress={() => setOtherSubjects(prev => prev.filter(i => i !== s))} activeColor={COLORS.secondary} />)}
-                 <TouchableOpacity onPress={() => setShowOtherModal(true)} style={styles.addOtherChip}>
-                    <SVGIcon name="add-circle" size={18} color={primary} />
-                    <Text style={[styles.chipText, { color: primary, marginLeft: 4 }]}>Other</Text>
-                 </TouchableOpacity>
-               </View>
+               {isPlatinumSchool ? (
+                 <>
+                   <View style={styles.platinumBadgeHeader}>
+                     <SVGIcon name="ribbon" size={20} color={COLORS.gold} />
+                     <Text style={styles.platinumBadgeTitle}>SHS PLATINUM CURRICULUM</Text>
+                   </View>
+
+                   <Text style={styles.sectionTitle}>Select SHS Program Track</Text>
+                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+                     <View style={{ flexDirection: "row", gap: 10 }}>
+                       {Object.values(SHS_PROGRAMS).map((prog) => {
+                         const isActive = selectedShsProgram === prog.id;
+                         return (
+                           <TouchableOpacity
+                             key={prog.id}
+                             onPress={() => setSelectedShsProgram(prog.id)}
+                             style={[
+                               styles.shsProgramCard,
+                               isActive && { backgroundColor: primary, borderColor: primary },
+                             ]}
+                           >
+                             <Text style={[styles.shsProgramTitle, isActive && { color: "#fff" }]}>
+                               {prog.name}
+                             </Text>
+                             <Text
+                               style={[styles.shsProgramSub, isActive && { color: "rgba(255,255,255,0.85)" }]}
+                               numberOfLines={2}
+                             >
+                               {prog.description}
+                             </Text>
+                           </TouchableOpacity>
+                         );
+                       })}
+                     </View>
+                   </ScrollView>
+
+                   <Text style={styles.sectionTitle}>
+                     {SHS_PROGRAMS[selectedShsProgram]?.name} Subjects
+                   </Text>
+                   <View style={styles.chipGrid}>
+                     {(SHS_PROGRAMS[selectedShsProgram]?.subjects || []).map((s) => (
+                       <Chip
+                         key={s}
+                         label={s}
+                         active={selectedSubjects.includes(s)}
+                         onPress={() =>
+                           setSelectedSubjects((prev) =>
+                             prev.includes(s) ? prev.filter((i) => i !== s) : [...prev, s]
+                           )
+                         }
+                         activeColor={primary}
+                       />
+                     ))}
+                     {otherSubjects.map((s) => (
+                       <Chip
+                         key={s}
+                         label={s}
+                         active={true}
+                         onPress={() => setOtherSubjects((prev) => prev.filter((i) => i !== s))}
+                         activeColor={COLORS.secondary}
+                       />
+                     ))}
+                     <TouchableOpacity onPress={() => setShowOtherModal(true)} style={styles.addOtherChip}>
+                       <SVGIcon name="add-circle" size={18} color={primary} />
+                       <Text style={[styles.chipText, { color: primary, marginLeft: 4 }]}>Other</Text>
+                     </TouchableOpacity>
+                   </View>
+
+                   {(selectedSubjects.length > 0 || otherSubjects.length > 0) && (
+                     <View style={styles.selectedSummaryContainer}>
+                       <Text style={styles.selectedSummaryHeader}>
+                         Selected Subjects ({selectedSubjects.length + otherSubjects.length}):
+                       </Text>
+                       <Text style={styles.selectedSummaryBody}>
+                         {[...selectedSubjects, ...otherSubjects].join(" • ")}
+                       </Text>
+                     </View>
+                   )}
+                 </>
+               ) : (
+                 <>
+                   <Text style={styles.sectionTitle}>Select Curriculum</Text>
+                   <View style={styles.curriculumRow}>
+                      <TouchableOpacity onPress={() => { setCurriculum("GES"); setSelectedSubjects([]); setOtherSubjects([]); }} style={[styles.curriculumBtn, curriculum === "GES" && { backgroundColor: primary, borderColor: primary }]}>
+                        <Text style={[styles.curriculumText, curriculum === "GES" && { color: "#fff" }]}>GES (National)</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => { setCurriculum("Cambridge"); setSelectedSubjects([]); setOtherSubjects([]); }} style={[styles.curriculumBtn, curriculum === "Cambridge" && { backgroundColor: primary, borderColor: primary }]}>
+                        <Text style={[styles.curriculumText, curriculum === "Cambridge" && { color: "#fff" }]}>Cambridge (IGCSE)</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => { setCurriculum("Montessori"); setSelectedSubjects([]); setOtherSubjects([]); }} style={[styles.curriculumBtn, curriculum === "Montessori" && { backgroundColor: primary, borderColor: primary }]}>
+                        <Text style={[styles.curriculumText, curriculum === "Montessori" && { color: "#fff" }]}>Montessori</Text>
+                      </TouchableOpacity>
+                   </View>
+
+                   <Text style={styles.sectionTitle}>{curriculum} Subjects</Text>
+                   <View style={styles.chipGrid}>
+                     {subjectList.map(s => <Chip key={s} label={s} active={selectedSubjects.includes(s)} onPress={() => setSelectedSubjects(prev => prev.includes(s) ? prev.filter(i => i !== s) : [...prev, s])} activeColor={primary} />)}
+                     {otherSubjects.map(s => <Chip key={s} label={s} active={true} onPress={() => setOtherSubjects(prev => prev.filter(i => i !== s))} activeColor={COLORS.secondary} />)}
+                     <TouchableOpacity onPress={() => setShowOtherModal(true)} style={styles.addOtherChip}>
+                        <SVGIcon name="add-circle" size={18} color={primary} />
+                        <Text style={[styles.chipText, { color: primary, marginLeft: 4 }]}>Other</Text>
+                     </TouchableOpacity>
+                   </View>
+                 </>
+               )}
             </Animatable.View>
           )}
 
@@ -288,14 +399,18 @@ export default function TeacherSignupScreen() {
           )}
 
           <View style={styles.footer}>
-            {step > 1 && (
-              <TouchableOpacity onPress={() => setStep(s => s - 1)} style={styles.backBtn}>
-                <Text style={styles.backBtnText}>Back</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              onPress={() => {
+                if (step === 1) handleBackToLogin();
+                else setStep((s) => s - 1);
+              }}
+              style={styles.backBtn}
+            >
+              <Text style={styles.backBtnText}>Back</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={() => { if(step < 3) handleNext(); else handleSignup(); }}
-              style={[styles.nextBtn, { backgroundColor: primary, flex: step === 1 ? 1 : 2 }]}
+              style={[styles.nextBtn, { backgroundColor: primary, flex: 1 }]}
               disabled={loading}
             >
               {loading ? (
@@ -346,6 +461,28 @@ const Chip = ({ label, active, onPress, activeColor }: any) => (
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   scrollContent: { padding: 24, flexGrow: 1 },
+  topNavRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    marginBottom: 10,
+  },
+  topBackBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  topBackText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
   header: { marginBottom: 30, alignItems: "center" },
   title: { fontSize: 26, fontWeight: "800", color: "#0F172A" },
   subtitle: { fontSize: 14, color: "#64748B", marginTop: 4, fontWeight: "600" },
@@ -363,6 +500,66 @@ const styles = StyleSheet.create({
   input: { flex: 1, height: 50, paddingHorizontal: 10, fontSize: 14, color: "#1E293B" },
   eyeIcon: { paddingHorizontal: 12 },
   sectionTitle: { fontSize: 12, fontWeight: "900", color: "#94A3B8", marginBottom: 15, textTransform: "uppercase", letterSpacing: 1, marginTop: 10 },
+  platinumBadgeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF9C3',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#FDE047',
+  },
+  platinumBadgeTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#854D0E',
+    letterSpacing: 0.8,
+  },
+  shsProgramCard: {
+    width: 170,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+  },
+  shsProgramTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  shsProgramSub: {
+    fontSize: 11,
+    color: '#64748B',
+    lineHeight: 15,
+  },
+  selectedSummaryContainer: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+  },
+  selectedSummaryHeader: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#475569',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  selectedSummaryBody: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    lineHeight: 18,
+  },
   chipGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 24 },
   chip: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0" },
   chipText: { fontSize: 13, fontWeight: "700", color: "#475569" },

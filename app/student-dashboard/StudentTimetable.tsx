@@ -40,8 +40,12 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 const SUBJECT_COLORS: Record<string, { bg: string, border: string }> = {
   "Mathematics": { bg: "#E0F2FE", border: "#0EA5E9" },
+  "Core Mathematics": { bg: "#E0F2FE", border: "#0EA5E9" },
+  "Elective Mathematics": { bg: "#DBEAFE", border: "#2563EB" },
   "English": { bg: "#FEE2E2", border: "#EF4444" },
+  "English Language": { bg: "#FEE2E2", border: "#EF4444" },
   "Science": { bg: "#DCFCE7", border: "#22C55E" },
+  "Integrated Science": { bg: "#DCFCE7", border: "#22C55E" },
   "Social Studies": { bg: "#FEF9C3", border: "#EAB308" },
   "Computing": { bg: "#F3E8FF", border: "#A855F7" },
   "RME": { bg: "#FFEDD5", border: "#F97316" },
@@ -58,7 +62,14 @@ const SUBJECT_COLORS: Record<string, { bg: string, border: string }> = {
   "Physics": { bg: "#F3E8FF", border: "#A855F7" },
   "Economics": { bg: "#FFEDD5", border: "#F97316" },
   "Business Studies": { bg: "#E0E7FF", border: "#6366F1" },
+  "Financial Accounting": { bg: "#FEF9C3", border: "#CA8A04" },
+  "Cost Accounting": { bg: "#FEF3C7", border: "#D97706" },
+  "Business Management": { bg: "#E0E7FF", border: "#4F46E5" },
+  "Government": { bg: "#FEE2E2", border: "#DC2626" },
+  "Literature in English": { bg: "#FAE8FF", border: "#C026D3" },
   "Geography": { bg: "#ECFDF5", border: "#10B981" },
+  "General Agriculture": { bg: "#DCFCE7", border: "#16A34A" },
+  "Robotics & Artificial Intelligence": { bg: "#E0F2FE", border: "#0284C7" },
   "DEFAULT": { bg: "#F8FAFC", border: "#E2E8F0" }
 };
 

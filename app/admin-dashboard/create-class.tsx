@@ -28,6 +28,8 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { normalizeCategory } from "../../constants/tierPermissions";
 import { isAdminUser } from "../../utils/authUnify";
 import { db } from "../../firebaseConfig";
 
@@ -40,7 +42,8 @@ type ClassItem = {
   stats?: { total: number; male: number; female: number };
 };
 
-const resolveDepartmentByLevel = (level: string | number): string => {
+const resolveDepartmentByLevel = (level: string | number, isPlatinum: boolean = false): string => {
+  if (isPlatinum) return "SHS";
   const l = String(level).toUpperCase();
   if (["A", "B", "C", "D"].includes(l)) return "Pre-School";
 
@@ -48,7 +51,7 @@ const resolveDepartmentByLevel = (level: string | number): string => {
   if (numLevel >= 1 && numLevel <= 3) return "Lower Primary";
   if (numLevel >= 4 && numLevel <= 6) return "Upper Primary";
   if (numLevel >= 7 && numLevel <= 9) return "JHS";
-  return "Unknown";
+  return "SHS";
 };
 
 const getLevelValue = (level: string | number): number => {
@@ -78,7 +81,10 @@ export default function ClassManagementScreen() {
     return () => { isMounted.current = false; };
   }, []);
 
-  const levels = ["A", "B", "C", "D", 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const acadConfig = useAcademicConfig();
+  const isPlatinum = useMemo(() => normalizeCategory(acadConfig.category) === "platinum", [acadConfig.category]);
+
+  const levels = isPlatinum ? [1, 2, 3] : ["A", "B", "C", "D", 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
   // GRANT ACCESS TO ALL ADMIN USERS (Proprietor, Headmaster, etc.)
   const isAuthorized = useMemo(() => isAdminUser(appUser), [appUser]);
@@ -171,7 +177,7 @@ export default function ClassManagementScreen() {
     }
     setLoading(true);
     try {
-      const department = resolveDepartmentByLevel(newClassLevel);
+      const department = resolveDepartmentByLevel(newClassLevel, isPlatinum);
       const ref = await addDoc(collection(db, "classes"), {
         name: newClassNameInput.trim(),
         level: newClassLevel,
@@ -235,7 +241,7 @@ export default function ClassManagementScreen() {
     }
   };
 
-  const departmentsOrder = ["Pre-School", "Lower Primary", "Upper Primary", "JHS"];
+  const departmentsOrder = isPlatinum ? ["SHS"] : ["Pre-School", "Lower Primary", "Upper Primary", "JHS"];
   const classesByDept = useMemo(() => classes.reduce((acc, c) => {
       if (!acc[c.department]) acc[c.department] = [];
       acc[c.department].push(c);

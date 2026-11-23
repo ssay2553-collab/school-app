@@ -59,12 +59,12 @@ const schools = {
     authDomain: "abijah-93b3a.firebaseapp.com",
   },
   kent: {
-    name: "World Sage",
+    name: "Yamin International",
     backgroundColor: "#A9D8F2",
     authDomain: "golden-rock-16bf8.firebaseapp.com",
   },
   bishops: {
-    name: "Bishop App",
+    name: "Mighty Institute",
     backgroundColor: "#FAFAFA",
     authDomain: "thess-app.firebaseapp.com",
   },
@@ -79,7 +79,7 @@ const schools = {
     authDomain: "clis-app-e39e8.firebaseapp.com",
   },
   model: {
-    name: "Model Power",
+    name: "Kingsdee Memorial",
     backgroundColor: "#ce87e6ff",
     authDomain: "model-power-430de.firebaseapp.com",
   },
@@ -94,7 +94,7 @@ const schools = {
     authDomain: "bright-brains-ed4d7.firebaseapp.com",
   },
   lilies: {
-    name: "Lillies App",
+    name: "Royal Lillies",
     backgroundColor: "#FDF7FF",
     authDomain: "bright-lilies.firebaseapp.com",
   },

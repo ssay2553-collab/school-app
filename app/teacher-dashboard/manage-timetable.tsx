@@ -24,7 +24,9 @@ import {
     COMMON_ACTIVITIES,
     GES_SUBJECTS,
     MONTESSORI_SUBJECTS,
+    SHS_PROGRAMS,
 } from "../../constants/Curriculum";
+import { normalizeCategory } from "../../constants/tierPermissions";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -168,9 +170,13 @@ export default function CreateLessonTimetable() {
     }
   };
 
+  const isPlatinumSchool = normalizeCategory(SCHOOL_CONFIG.category) === "platinum";
+
   const availableSubjects = useMemo(() => {
     let list = GES_SUBJECTS;
-    if (curriculum === "Cambridge") list = CAMBRIDGE_SUBJECTS;
+    if (isPlatinumSchool || curriculum === "SHS") {
+      list = Array.from(new Set(Object.values(SHS_PROGRAMS).flatMap((p) => p.subjects)));
+    } else if (curriculum === "Cambridge") list = CAMBRIDGE_SUBJECTS;
     else if (curriculum === "Montessori") list = MONTESSORI_SUBJECTS;
 
     const teacherProfileSubjects = Array.from(
@@ -188,7 +194,7 @@ export default function CreateLessonTimetable() {
       ...teacherProfileSubjects,
       ...customSubjects,
     ]).sort();
-  }, [curriculum, customSubjects, appUser]);
+  }, [curriculum, customSubjects, appUser, isPlatinumSchool]);
 
   const filteredSubjects = useMemo(() => {
     if (!subjectSearchText.trim()) return availableSubjects;

@@ -39,16 +39,14 @@ export const GroupMeetingModal: React.FC<GroupMeetingModalProps> = ({
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [timeLeft, setTimeLeft] = useState<string>("");
 
-  if (!meeting) return null;
-
-  const isHost = meeting.hostUid === currentUser.uid || currentUser.userType === "admin";
+  const isHost = meeting ? (meeting.hostUid === currentUser.uid || currentUser.userType === "admin") : false;
   const myParticipant = participants.find((p) => p.uid === currentUser.uid);
   const isMuted = myParticipant ? myParticipant.isMuted : false;
   const raisedHand = myParticipant ? myParticipant.raisedHand : false;
 
   // Countdown timer & auto-cut at time limit
   useEffect(() => {
-    if (!visible || !meeting?.startedAt) return;
+    if (!meeting || !visible || !meeting?.startedAt) return;
 
     const startTimeMs = meeting.startedAt?.toMillis
       ? meeting.startedAt.toMillis()
@@ -102,7 +100,7 @@ export const GroupMeetingModal: React.FC<GroupMeetingModalProps> = ({
     return () => {
       agoraRtcService.leaveChannel();
     };
-  }, [visible, meeting?.channelName]);
+  }, [visible, meeting?.channelName, currentUser.uid, isMuted]);
 
   // Sync Mute state to local Agora RTC audio track
   useEffect(() => {
@@ -110,6 +108,8 @@ export const GroupMeetingModal: React.FC<GroupMeetingModalProps> = ({
       agoraRtcService.setMuted(isMuted);
     }
   }, [isMuted, visible]);
+
+  if (!meeting) return null;
 
   const handleToggleMute = async () => {
     if (!meeting?.id) return;

@@ -1,11 +1,13 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { SHS_PROGRAMS } from "../../constants/Curriculum";
 
-interface Lesson {
+export interface Lesson {
   subject: string;
   startTime: string; // "08:00 AM"
   endTime: string;
   day: string; // "Monday"
+  program?: string;
 }
 
 const DAY_MAP: Record<string, number> = {
@@ -17,6 +19,21 @@ const DAY_MAP: Record<string, number> = {
   Friday: 6,
   Saturday: 7,
 };
+
+export const ALL_SHS_SUBJECTS = Array.from(
+  new Set(Object.values(SHS_PROGRAMS).flatMap((p) => p.subjects))
+);
+
+export function getShsProgramForSubject(subject: string): string | null {
+  if (!subject) return null;
+  const subLower = subject.trim().toLowerCase();
+  for (const prog of Object.values(SHS_PROGRAMS)) {
+    if (prog.subjects.some((s) => s.toLowerCase() === subLower)) {
+      return prog.name;
+    }
+  }
+  return null;
+}
 
 export async function scheduleTimetableReminders(lessons: Lesson[]) {
   if (Platform.OS === "web") return;
@@ -56,12 +73,15 @@ export async function scheduleTimetableReminders(lessons: Lesson[]) {
       }
       if (schedHours < 0) continue; // Skip if it ends up on the previous day
 
+      const shsProgram = lesson.program || getShsProgramForSubject(lesson.subject);
+      const title = shsProgram ? `Upcoming Lesson (${shsProgram}) 🍎` : "Upcoming Lesson 🍎";
+
       try {
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: "Upcoming Lesson 🍎",
+            title,
             body: `Your ${lesson.subject} class starts in 5 minutes (${lesson.startTime}).`,
-            data: { type: "timetable_reminder", subject: lesson.subject },
+            data: { type: "timetable_reminder", subject: lesson.subject, program: shsProgram },
             sound: true,
           },
           trigger: {

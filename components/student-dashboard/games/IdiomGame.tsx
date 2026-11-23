@@ -78,6 +78,21 @@ const MASTER_IDIOMS = [
   { phrase: "Dropping like flies", meaning: "Falling ill or quitting rapidly in large numbers.", example: "The flu went around and students were dropping like flies." },
   { phrase: "Face the music", meaning: "To accept the unpleasant consequences of your actions.", example: "He broke the window and had to face the music." },
   { phrase: "Get out of hand", meaning: "To become out of control.", example: "The classroom noise got completely out of hand." },
+  { phrase: "Bite the bullet", meaning: "To endure a painful situation that is unavoidable.", example: "We have to bite the bullet and finish our chores." },
+  { phrase: "Burn bridges", meaning: "To ruin a relationship or connection permanently.", example: "Never burn bridges with your former classmates." },
+  { phrase: "Call it a day", meaning: "To stop working on something for the day.", example: "Let's study for one more hour and call it a day." },
+  { phrase: "Give someone the benefit of the doubt", meaning: "To believe someone's statement without proof.", example: "I gave him the benefit of the doubt." },
+  { phrase: "Hit the nail on the head", meaning: "To describe exactly what is causing a problem.", example: "Your answer hit the nail on the head." },
+  { phrase: "In the nick of time", meaning: "Just before the deadline or disaster; barely in time.", example: "We arrived at the exam hall in the nick of time." },
+  { phrase: "Jump on the bandwagon", meaning: "To join a popular activity or trend.", example: "Everyone started wearing wristbands, so I jumped on the bandwagon." },
+  { phrase: "Keep your fingers crossed", meaning: "To wish for good luck.", example: "Keep your fingers crossed that we win!" },
+  { phrase: "Let sleeping dogs lie", meaning: "To leave an existing problem alone if it's not causing trouble.", example: "Don't bring up the old argument; let sleeping dogs lie." },
+  { phrase: "Make a mountain out of a molehill", meaning: "To make a small problem seem much bigger than it is.", example: "Don't make a mountain out of a molehill over one quiz question." },
+  { phrase: "On cloud nine", meaning: "Extremely happy and joyful.", example: "She was on cloud nine after winning the award." },
+  { phrase: "Play devil's advocate", meaning: "To argue against an idea just for debate.", example: "He played devil's advocate during our discussion." },
+  { phrase: "Rock the boat", meaning: "To cause trouble or upset a stable situation.", example: "Everything is running smoothly, so let's not rock the boat." },
+  { phrase: "Through thick and thin", meaning: "Through good times and bad times.", example: "True friends stick together through thick and thin." },
+  { phrase: "Weather the storm", meaning: "To survive a difficult period successfully.", example: "Working hard helped us weather the storm of exams." }
 ];
 
 interface IdiomGameProps {

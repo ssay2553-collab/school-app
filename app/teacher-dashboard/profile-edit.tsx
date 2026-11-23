@@ -18,12 +18,16 @@ const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
-import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, CurriculumType } from "../../constants/Curriculum";
+import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, SHS_PROGRAMS, CurriculumType } from "../../constants/Curriculum";
+import { SCHOOL_CONFIG } from "../../constants/Config";
+import { normalizeCategory } from "../../constants/tierPermissions";
 import moment from "moment";
 import { useTeacherProfile } from "../../hooks/teacher-dashboard/useTeacherProfile";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 export default function TeacherProfileEdit() {
+  const isPlatinumSchool = normalizeCategory(SCHOOL_CONFIG.category) === "platinum";
+  const [selectedShsProgram, setSelectedShsProgram] = useState<string>("core");
   const {
     appUser,
     loading,
@@ -420,55 +424,114 @@ export default function TeacherProfileEdit() {
                 ))}
               </View>
 
-              <Text style={styles.modalLabel}>CURRICULUM</Text>
-              <View style={styles.pickerWrapper}>
-                <Text style={styles.miniLabel}>CURRICULUM</Text>
-                <Picker
-                  selectedValue={curriculum}
-                  onValueChange={(v) => {
-                    setCurriculum(v as CurriculumType);
-                    setSelectedSubjects([]);
-                    setIsOtherSelected(false);
-                    setCustomSubject("");
-                  }}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="GES (National)" value="GES" />
-                  <Picker.Item label="Cambridge (IGCSE)" value="Cambridge" />
-                  <Picker.Item label="Montessori" value="Montessori" />
-                </Picker>
-              </View>
+              {isPlatinumSchool ? (
+                <>
+                  <Text style={styles.modalLabel}>SHS PROGRAM TRACK</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      {Object.values(SHS_PROGRAMS).map((prog) => (
+                        <TouchableOpacity
+                          key={prog.id}
+                          onPress={() => setSelectedShsProgram(prog.id)}
+                          style={[
+                            styles.chip,
+                            selectedShsProgram === prog.id && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+                          ]}
+                        >
+                          <Text style={[styles.chipText, selectedShsProgram === prog.id && { color: "#fff" }]}>
+                            {prog.name}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
 
-              <Text style={styles.modalLabel}>{curriculum} SUBJECTS</Text>
-              <View style={styles.chipGrid}>
-                {(curriculum === "GES" ? GES_SUBJECTS : CAMBRIDGE_SUBJECTS).map(s => (
-                  <TouchableOpacity
-                    key={s}
-                    onPress={() => setSelectedSubjects(prev => prev.includes(s) ? prev.filter(item => item !== s) : [...prev, s])}
-                    style={[styles.chip, selectedSubjects.includes(s) && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
-                  >
-                    <Text style={[styles.chipText, selectedSubjects.includes(s) && { color: '#fff' }]}>{s}</Text>
-                  </TouchableOpacity>
-                ))}
+                  <Text style={styles.modalLabel}>
+                    {SHS_PROGRAMS[selectedShsProgram]?.name || "SHS"} SUBJECTS
+                  </Text>
+                  <View style={styles.chipGrid}>
+                    {(SHS_PROGRAMS[selectedShsProgram]?.subjects || []).map((s) => (
+                      <TouchableOpacity
+                        key={s}
+                        onPress={() => setSelectedSubjects((prev) => prev.includes(s) ? prev.filter((item) => item !== s) : [...prev, s])}
+                        style={[styles.chip, selectedSubjects.includes(s) && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+                      >
+                        <Text style={[styles.chipText, selectedSubjects.includes(s) && { color: "#fff" }]}>{s}</Text>
+                      </TouchableOpacity>
+                    ))}
 
-                {/* Show custom subjects as active chips */}
-                {selectedSubjects.filter(s => !(curriculum === "GES" ? GES_SUBJECTS : CAMBRIDGE_SUBJECTS).includes(s)).map(s => (
-                  <TouchableOpacity
-                    key={s}
-                    onPress={() => setSelectedSubjects(prev => prev.filter(item => item !== s))}
-                    style={[styles.chip, { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
-                  >
-                    <Text style={[styles.chipText, { color: '#fff' }]}>{s}</Text>
-                  </TouchableOpacity>
-                ))}
+                    {/* Show selected subjects outside current SHS program as active chips */}
+                    {selectedSubjects.filter((s) => !(SHS_PROGRAMS[selectedShsProgram]?.subjects || []).includes(s)).map((s) => (
+                      <TouchableOpacity
+                        key={s}
+                        onPress={() => setSelectedSubjects((prev) => prev.filter((item) => item !== s))}
+                        style={[styles.chip, { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+                      >
+                        <Text style={[styles.chipText, { color: "#fff" }]}>{s}</Text>
+                      </TouchableOpacity>
+                    ))}
 
-                <TouchableOpacity
-                  onPress={() => setIsOtherSelected(!isOtherSelected)}
-                  style={[styles.chip, isOtherSelected && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
-                >
-                  <Text style={[styles.chipText, isOtherSelected && { color: '#fff' }]}>Other</Text>
-                </TouchableOpacity>
-              </View>
+                    <TouchableOpacity
+                      onPress={() => setIsOtherSelected(!isOtherSelected)}
+                      style={[styles.chip, isOtherSelected && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+                    >
+                      <Text style={[styles.chipText, isOtherSelected && { color: "#fff" }]}>Other</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.modalLabel}>CURRICULUM</Text>
+                  <View style={styles.pickerWrapper}>
+                    <Text style={styles.miniLabel}>CURRICULUM</Text>
+                    <Picker
+                      selectedValue={curriculum}
+                      onValueChange={(v) => {
+                        setCurriculum(v as CurriculumType);
+                        setSelectedSubjects([]);
+                        setIsOtherSelected(false);
+                        setCustomSubject("");
+                      }}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="GES (National)" value="GES" />
+                      <Picker.Item label="Cambridge (IGCSE)" value="Cambridge" />
+                      <Picker.Item label="Montessori" value="Montessori" />
+                    </Picker>
+                  </View>
+
+                  <Text style={styles.modalLabel}>{curriculum} SUBJECTS</Text>
+                  <View style={styles.chipGrid}>
+                    {(curriculum === "GES" ? GES_SUBJECTS : CAMBRIDGE_SUBJECTS).map((s) => (
+                      <TouchableOpacity
+                        key={s}
+                        onPress={() => setSelectedSubjects((prev) => prev.includes(s) ? prev.filter((item) => item !== s) : [...prev, s])}
+                        style={[styles.chip, selectedSubjects.includes(s) && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+                      >
+                        <Text style={[styles.chipText, selectedSubjects.includes(s) && { color: "#fff" }]}>{s}</Text>
+                      </TouchableOpacity>
+                    ))}
+
+                    {/* Show custom subjects as active chips */}
+                    {selectedSubjects.filter((s) => !(curriculum === "GES" ? GES_SUBJECTS : CAMBRIDGE_SUBJECTS).includes(s)).map((s) => (
+                      <TouchableOpacity
+                        key={s}
+                        onPress={() => setSelectedSubjects((prev) => prev.filter((item) => item !== s))}
+                        style={[styles.chip, { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+                      >
+                        <Text style={[styles.chipText, { color: "#fff" }]}>{s}</Text>
+                      </TouchableOpacity>
+                    ))}
+
+                    <TouchableOpacity
+                      onPress={() => setIsOtherSelected(!isOtherSelected)}
+                      style={[styles.chip, isOtherSelected && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+                    >
+                      <Text style={[styles.chipText, isOtherSelected && { color: "#fff" }]}>Other</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
 
               {isOtherSelected && (
                 <>

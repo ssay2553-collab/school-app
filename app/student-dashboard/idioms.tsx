@@ -144,7 +144,27 @@ const IDIOMS_DATASET: Idiom[] = [
   { id: 163, phrase: "Spine-chilling", category: "Body & Actions", meaning: "Frightening or terrifying.", example: "The ghost story around the campfire was spine-chilling." },
   { id: 164, phrase: "Step up your game", category: "Body & Actions", meaning: "To improve your performance or effort.", example: "If we want to win the tournament, we need to step up our game." },
   { id: 165, phrase: "Under the weather", category: "Body & Actions", meaning: "Feeling slightly sick or unwell.", example: "I stayed home today because I was feeling a bit under the weather." },
-  { id: 166, phrase: "Wake up on the wrong side of the bed", category: "Body & Actions", meaning: "Being in a bad mood all day.", example: "Why is Leo so grumpy? He must have woken up on the wrong side of the bed." }
+  { id: 166, phrase: "Wake up on the wrong side of the bed", category: "Body & Actions", meaning: "Being in a bad mood all day.", example: "Why is Leo so grumpy? He must have woken up on the wrong side of the bed." },
+  { id: 167, phrase: "Beat around the bush", category: "Time & Communication", meaning: "To avoid talking about what is important.", example: "Stop beating around the bush and tell me the answer." },
+  { id: 168, phrase: "Bite the bullet", category: "Time & Communication", meaning: "To endure a painful situation that is unavoidable.", example: "We have to bite the bullet and finish our chores before playing." },
+  { id: 169, phrase: "Burn bridges", category: "Time & Communication", meaning: "To ruin a relationship or connection permanently.", example: "Never burn bridges with your teachers or friends." },
+  { id: 170, phrase: "Call it a day", category: "Time & Communication", meaning: "To stop working on something for the day.", example: "We've studied for three hours; let's call it a day." },
+  { id: 171, phrase: "Cutting edge", category: "Time & Communication", meaning: "The newest and most advanced stage of technology or art.", example: "Our school computer lab features cutting edge technology." },
+  { id: 172, phrase: "Down to earth", category: "Time & Communication", meaning: "Practical, realistic, and humble.", example: "Even though she won the spelling bee, she remains very down to earth." },
+  { id: 173, phrase: "Face the music", category: "Time & Communication", meaning: "To accept the unpleasant consequences of one's actions.", example: "He broke the window during soccer and had to face the music." },
+  { id: 174, phrase: "Get out of hand", category: "Time & Communication", meaning: "To become uncontrollable.", example: "The classroom excitement got completely out of hand during the party." },
+  { id: 175, phrase: "Give someone the benefit of the doubt", category: "Time & Communication", meaning: "To believe someone's statement without proof.", example: "I gave him the benefit of the doubt when he said his dog ate his homework." },
+  { id: 176, phrase: "Hit the nail on the head", category: "Time & Communication", meaning: "To describe exactly what is causing a situation or problem.", example: "Your explanation of the science experiment hit the nail on the head." },
+  { id: 177, phrase: "In the nick of time", category: "Time & Communication", meaning: "Just before the deadline or disaster; barely in time.", example: "We arrived at the exam hall in the nick of time." },
+  { id: 178, phrase: "Jump on the bandwagon", category: "Time & Communication", meaning: "To join a popular activity or trend.", example: "Everyone started wearing wristbands, so I jumped on the bandwagon." },
+  { id: 179, phrase: "Keep your fingers crossed", category: "Time & Communication", meaning: "To wish for good luck.", example: "Keep your fingers crossed that we win the science fair!" },
+  { id: 180, phrase: "Let sleeping dogs lie", category: "Time & Communication", meaning: "To leave an existing problem alone if it's not causing trouble.", example: "Don't bring up the old argument; let sleeping dogs lie." },
+  { id: 181, phrase: "Make a mountain out of a molehill", category: "Time & Communication", meaning: "To make a small problem seem much bigger than it is.", example: "Missing one question on a quiz isn't a disaster—don't make a mountain out of a molehill." },
+  { id: 182, phrase: "On cloud nine", category: "Time & Communication", meaning: "Extremely happy and joyful.", example: "She was on cloud nine after receiving the top student award." },
+  { id: 183, phrase: "Play devil's advocate", category: "Time & Communication", meaning: "To argue against an idea just for the sake of debate.", example: "He played devil's advocate to help us think of counterarguments." },
+  { id: 184, phrase: "Rock the boat", category: "Time & Communication", meaning: "To cause trouble or upset a stable situation.", example: "Everything is running smoothly, so let's not rock the boat." },
+  { id: 185, phrase: "Through thick and thin", category: "Time & Communication", meaning: "Through good times and bad times.", example: "True friends stick together through thick and thin." },
+  { id: 186, phrase: "Weather the storm", category: "Time & Communication", meaning: "To survive a difficult period successfully.", example: "Working together helped our class weather the storm of difficult exams." }
 ];
 
 export default function IdiomsScreen() {

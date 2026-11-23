@@ -83,9 +83,9 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
   onResetPassword,
   onLinkStudentByCode,
 }) => {
-  if (!user) return null;
-
   const [parentCodeInput, setParentCodeInput] = React.useState("");
+
+  if (!user) return null;
 
   const formatDate = (date: any) => {
     if (!date) return "N/A";

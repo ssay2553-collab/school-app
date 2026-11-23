@@ -46,6 +46,142 @@ export const MONTESSORI_SUBJECTS = [
   "Culture",
 ];
 
+export interface SHSProgram {
+  id: string;
+  name: string;
+  description: string;
+  subjects: string[];
+}
+
+export const SHS_PROGRAMS: Record<string, SHSProgram> = {
+  core: {
+    id: "core",
+    name: "SHS Core Subjects",
+    description: "Compulsory subjects taken by all SHS students",
+    subjects: [
+      "Core Mathematics",
+      "English Language",
+      "Integrated Science",
+      "Social Studies",
+    ],
+  },
+  science: {
+    id: "science",
+    name: "General Science",
+    description: "Physics, Chemistry, Biology, Elective Math & ICT",
+    subjects: [
+      "Elective Mathematics",
+      "Physics",
+      "Chemistry",
+      "Biology",
+      "ICT (Elective)",
+    ],
+  },
+  general_arts: {
+    id: "general_arts",
+    name: "General Arts",
+    description: "Humanities, Languages, Literature, Law & Social Sciences",
+    subjects: [
+      "Literature in English",
+      "French",
+      "Ghanaian Language (Twi/Fante/Ga/Ewe)",
+      "Economics",
+      "Geography",
+      "History",
+      "Government",
+      "Christian Religious Studies (CRS)",
+      "Islamic Religious Studies (IRS)",
+      "Elective Mathematics",
+      "Music",
+    ],
+  },
+  business: {
+    id: "business",
+    name: "Business",
+    description: "Accounting, Finance, Economics & Business Management",
+    subjects: [
+      "Financial Accounting",
+      "Cost Accounting",
+      "Business Management",
+      "Economics",
+      "Elective Mathematics",
+      "ICT (Elective)",
+    ],
+  },
+  agricultural_science: {
+    id: "agricultural_science",
+    name: "Agricultural Science",
+    description: "General Agric, Crop & Animal Husbandry",
+    subjects: [
+      "General Agriculture",
+      "Animal Husbandry",
+      "Crop Husbandry and Horticulture",
+      "Chemistry",
+      "Physics",
+      "Elective Mathematics",
+    ],
+  },
+  home_economics: {
+    id: "home_economics",
+    name: "Home Economics",
+    description: "Food & Nutrition, Textiles, Management in Living",
+    subjects: [
+      "Management in Living",
+      "Food and Nutrition",
+      "Clothing and Textiles",
+      "General Knowledge in Art (GKA)",
+      "Biology",
+      "Economics",
+    ],
+  },
+  visual_arts: {
+    id: "visual_arts",
+    name: "Visual Arts",
+    description: "Graphic Design, Sculpture, Picture Making & Crafts",
+    subjects: [
+      "General Knowledge in Art (GKA)",
+      "Graphic Design",
+      "Picture Making",
+      "Sculpture",
+      "Ceramics",
+      "Textiles",
+      "Leatherwork",
+      "Basketry",
+      "Jewellery",
+      "Economics",
+    ],
+  },
+  technical: {
+    id: "technical",
+    name: "Technical & Applied Technology",
+    description: "Building, Electronics, Auto Mechanics & Technical Drawing",
+    subjects: [
+      "Building Construction",
+      "Woodwork",
+      "Metalwork",
+      "Auto Mechanics",
+      "Applied Electricity",
+      "Electronics",
+      "Technical Drawing",
+      "Engineering Science",
+      "Elective Mathematics",
+    ],
+  },
+  stem: {
+    id: "stem",
+    name: "STEM & Robotics",
+    description: "Robotics, Coding, Artificial Intelligence & Engineering",
+    subjects: [
+      "Robotics & Artificial Intelligence",
+      "Computer Science & Coding",
+      "Engineering Physics",
+      "Biomedical Technology",
+      "Applied Mathematics",
+      "Aviation & Aerospace Tech",
+    ],
+  },
+};
+
 export const COMMON_ACTIVITIES = [
   "Break",
   "Lunch",
@@ -55,7 +191,7 @@ export const COMMON_ACTIVITIES = [
   "Club",
 ];
 
-export type CurriculumType = "GES" | "Cambridge" | "Montessori";
+export type CurriculumType = "GES" | "Cambridge" | "Montessori" | "SHS";
 
 /**
  * GES/NaCCA Class Levels with age ranges and curriculum descriptions

@@ -244,6 +244,8 @@ export default function OtherCharges() {
     classes,
     stats,
     appliedCharges,
+    studentBilledItems,
+    allAvailableItems,
     history,
     loadingHistory,
     fetchStudents,
@@ -893,6 +895,118 @@ export default function OtherCharges() {
             >
               {modalMode === "payment" ? (
                 <>
+                  {allAvailableItems.length > 0 && (
+                    <View style={{ marginBottom: 15 }}>
+                      <Text style={[styles.breakdownLabel, { marginBottom: 8 }]}>
+                        TARGET CHARGE ITEM
+                      </Text>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{ gap: 8, paddingRight: 10 }}
+                      >
+                        <TouchableOpacity
+                          style={[
+                            {
+                              paddingHorizontal: 12,
+                              paddingVertical: 8,
+                              borderRadius: 16,
+                              borderWidth: 1,
+                              backgroundColor: !chargeType ? THEME.primary : "#F1F5F9",
+                              borderColor: !chargeType ? THEME.primary : "#E2E8F0",
+                            },
+                            Platform.OS === "web" && ({ cursor: "pointer" } as any),
+                          ]}
+                          onPress={() => {
+                            setChargeType("");
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: "700",
+                              color: !chargeType ? "#fff" : VIBE.text,
+                            }}
+                          >
+                            General / Unspecified
+                          </Text>
+                        </TouchableOpacity>
+
+                        {allAvailableItems.map((item) => {
+                          const isSelected =
+                            chargeType.toLowerCase().trim() ===
+                            item.category.toLowerCase().trim();
+                          const hasDebt = item.balance > 0;
+                          return (
+                            <TouchableOpacity
+                              key={item.category}
+                              style={[
+                                {
+                                  paddingHorizontal: 12,
+                                  paddingVertical: 8,
+                                  borderRadius: 16,
+                                  borderWidth: 1,
+                                  backgroundColor: isSelected ? THEME.primary : "#F1F5F9",
+                                  borderColor: isSelected ? THEME.primary : "#E2E8F0",
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  gap: 6,
+                                },
+                                Platform.OS === "web" && ({ cursor: "pointer" } as any),
+                              ]}
+                              onPress={() => {
+                                setChargeType(item.category);
+                                if (hasDebt) {
+                                  setPaymentAmount(item.balance.toString());
+                                }
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: "700",
+                                  color: isSelected ? "#fff" : VIBE.text,
+                                }}
+                              >
+                                {item.category}
+                              </Text>
+                              <View
+                                style={{
+                                  paddingHorizontal: 6,
+                                  paddingVertical: 2,
+                                  borderRadius: 10,
+                                  backgroundColor: isSelected
+                                    ? "rgba(255,255,255,0.25)"
+                                    : hasDebt
+                                      ? VIBE.danger + "20"
+                                      : VIBE.success + "20",
+                                }}
+                              >
+                                <Text
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: "800",
+                                    color: isSelected
+                                      ? "#fff"
+                                      : hasDebt
+                                        ? VIBE.danger
+                                        : VIBE.success,
+                                  }}
+                                >
+                                  {hasDebt
+                                    ? `Owed: ₵${item.balance.toFixed(0)}`
+                                    : "Cleared"}
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  )}
+
                   <View style={{ gap: 15, marginBottom: 25 }}>
                     <Text style={styles.breakdownLabel}>AMOUNT TO PAY (₵)</Text>
                     <TextInput

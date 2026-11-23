@@ -19,6 +19,7 @@ import SVGIcon from "../../../components/SVGIcon";
 import {
     CAMBRIDGE_SUBJECTS,
     GES_SUBJECTS,
+    SHS_PROGRAMS,
 } from "../../../constants/Curriculum";
 import { COLORS, SHADOWS } from "../../../constants/theme";
 import {
@@ -357,7 +358,13 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
               <View>
                 <Text style={styles.pickerLabel}>Select Subjects Taught</Text>
                 <View style={styles.selectionGrid}>
-                  {[...new Set([...GES_SUBJECTS, ...CAMBRIDGE_SUBJECTS])]
+                  {[
+                    ...new Set([
+                      ...GES_SUBJECTS,
+                      ...CAMBRIDGE_SUBJECTS,
+                      ...Object.values(SHS_PROGRAMS).flatMap((p) => p.subjects),
+                    ]),
+                  ]
                     .sort()
                     .map((s) => {
                       const isSelected = selectedSubjects.includes(s);

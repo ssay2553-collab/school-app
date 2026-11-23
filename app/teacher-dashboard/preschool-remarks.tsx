@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
 import { getSchoolSignature } from "../../constants/Signatures";
@@ -141,8 +142,9 @@ export default function PreschoolRemarks() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <TierProtectedRoute featureId="teacher_behavioral_remarks">
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
       <View style={styles.headerCompact}>
         <TouchableOpacity
           onPress={() => {
@@ -322,6 +324,7 @@ export default function PreschoolRemarks() {
         </TouchableOpacity>
       )}
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

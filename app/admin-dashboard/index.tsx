@@ -139,6 +139,7 @@ export default function AdminDashboard() {
                 route: "/admin-dashboard/StudentCharges",
                 icon: "card",
                 color: "#6366f1",
+                featureId: "admin_other_charges",
               },
               {
                 title: "Daily Financials",
@@ -146,6 +147,7 @@ export default function AdminDashboard() {
                 route: "/shared/daily-financials",
                 icon: "receipt",
                 color: "#10b981",
+                featureId: "admin_daily_financials",
               },
               {
                 title: "Financial Summary",
@@ -153,6 +155,7 @@ export default function AdminDashboard() {
                 route: "/admin-dashboard/FinancialSummary",
                 icon: "analytics",
                 color: "#4F46E5",
+                featureId: "admin_financial_summary",
               },
               {
                 title: "AI Report Generator",
@@ -220,6 +223,7 @@ export default function AdminDashboard() {
           route: "/academic-calendar",
           icon: "calendar-outline",
           color: "#f97316",
+          featureId: "admin_term_calendar",
         },
       ],
     },
@@ -309,13 +313,15 @@ export default function AdminDashboard() {
           showParentButton={isDualRoleTeacherParent(appUser)}
           onParentDashboardPress={() => router.push("/parent-dashboard")}
         >
-          <AdminEventStats
-            upcomingEvents={upcomingEvents}
-            loading={eventsLoading}
-            brandPrimary={brandPrimary}
-            onViewAll={() => router.push("/academic-calendar")}
-            onEventPress={() => router.push("/academic-calendar")}
-          />
+          {isFeatureEnabled(acadConfig.category, "admin_term_calendar") && (
+            <AdminEventStats
+              upcomingEvents={upcomingEvents}
+              loading={eventsLoading}
+              brandPrimary={brandPrimary}
+              onViewAll={() => router.push("/academic-calendar")}
+              onEventPress={() => router.push("/academic-calendar")}
+            />
+          )}
         </DashboardHeader>
 
         <View style={styles.contentContainer}>

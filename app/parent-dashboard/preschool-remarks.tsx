@@ -25,6 +25,7 @@ import {
   Dimensions,
 } from "react-native";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
 import { getSchoolSignature } from "../../constants/Signatures";
@@ -264,69 +265,74 @@ export default function PreschoolRemarksParent() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
+      <TierProtectedRoute featureId="parent_behavioral_remarks">
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </TierProtectedRoute>
     );
   }
 
   if (children.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <SVGIcon name="arrow-back" size={24} color="#1E293B" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Behavioral Remarks</Text>
-        </View>
-        <View style={styles.emptyState}>
-          <SVGIcon name="information-circle" size={60} color="#CBD5E1" />
-          <Text style={styles.emptyStateTitle}>No Behavioral Records</Text>
-          <Text style={styles.emptyStateText}>
-            This screen is only for students in preschool levels (Creche, Nursery, KG, Level A-D). None of your children appear to be in these levels.
-          </Text>
-        </View>
-      </SafeAreaView>
+      <TierProtectedRoute featureId="parent_behavioral_remarks">
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <SVGIcon name="arrow-back" size={24} color="#1E293B" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Behavioral Remarks</Text>
+          </View>
+          <View style={styles.emptyState}>
+            <SVGIcon name="information-circle" size={60} color="#CBD5E1" />
+            <Text style={styles.emptyStateTitle}>No Behavioral Records</Text>
+            <Text style={styles.emptyStateText}>
+              This screen is only for students in preschool levels (Creche, Nursery, KG, Level A-D). None of your children appear to be in these levels.
+            </Text>
+          </View>
+        </SafeAreaView>
+      </TierProtectedRoute>
     );
   }
 
   const selectedChild = children.find(c => c.id === selectedChildId);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <SVGIcon name="arrow-back" size={24} color="#1E293B" />
-        </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: 15 }}>
-          <Text style={styles.headerTitle}>Behavioral Remarks</Text>
-          <Text style={styles.headerSubtitle}>Progress Monitoring</Text>
-        </View>
-      </View>
-
-      <ScrollView style={styles.mainScroll} contentContainerStyle={{ paddingBottom: 50 }}>
-        <View style={styles.selectorCard}>
-          <View style={styles.pickerBox}>
-            <Text style={styles.miniLabel}>Select Child</Text>
-            <Picker
-              selectedValue={selectedChildId}
-              onValueChange={setSelectedChildId}
-              style={styles.picker}
-            >
-              {children.map((c) => (
-                <Picker.Item key={c.id} label={c.name} value={c.id} />
-              ))}
-            </Picker>
+    <TierProtectedRoute featureId="parent_behavioral_remarks">
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <SVGIcon name="arrow-back" size={24} color="#1E293B" />
+          </TouchableOpacity>
+          <View style={{ flex: 1, marginLeft: 15 }}>
+            <Text style={styles.headerTitle}>Behavioral Remarks</Text>
+            <Text style={styles.headerSubtitle}>Progress Monitoring</Text>
           </View>
+        </View>
 
-          <View style={styles.pickerRow}>
-            <View style={{ flex: 1 }}>
-              <View style={styles.pickerBox}>
-                <Text style={styles.miniLabel}>Academic Year</Text>
-                <Picker
-                  selectedValue={selectedYear}
-                  onValueChange={setSelectedYear}
+        <ScrollView style={styles.mainScroll} contentContainerStyle={{ paddingBottom: 50 }}>
+          <View style={styles.selectorCard}>
+            <View style={styles.pickerBox}>
+              <Text style={styles.miniLabel}>Select Child</Text>
+              <Picker
+                selectedValue={selectedChildId}
+                onValueChange={setSelectedChildId}
+                style={styles.picker}
+              >
+                {children.map((c) => (
+                  <Picker.Item key={c.id} label={c.name} value={c.id} />
+                ))}
+              </Picker>
+            </View>
+
+            <View style={styles.pickerRow}>
+              <View style={{ flex: 1 }}>
+                <View style={styles.pickerBox}>
+                  <Text style={styles.miniLabel}>Academic Year</Text>
+                  <Picker
+                    selectedValue={selectedYear}
+                    onValueChange={setSelectedYear}
                   style={styles.picker}
                 >
                   {academicYears.map((y) => (
@@ -497,6 +503,7 @@ export default function PreschoolRemarksParent() {
         )}
       </ScrollView>
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

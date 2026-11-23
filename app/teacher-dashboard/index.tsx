@@ -271,6 +271,7 @@ export default function TeacherDashboard() {
             route: "/teacher-dashboard/preschool-remarks",
             icon: "chatbubble-ellipses",
             color: "#0277BD", // Warm Ocean Blue
+            featureId: "teacher_behavioral_remarks",
           },
           {
             title: "Exam Reports",
@@ -327,6 +328,13 @@ export default function TeacherDashboard() {
             icon: "code-slash",
             color: "#5E35B1", // Warm Violet
             featureId: "teacher_coding_robotics",
+          },
+          {
+            title: "Robotics Lab",
+            subtitle: "Learn, Build, Code & Create",
+            route: "/robotics-lab",
+            icon: "hardware-chip",
+            color: "#0284C7", // Warm Sky Blue
           },
           {
             title: "Dictionary Hub",

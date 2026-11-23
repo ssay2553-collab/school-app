@@ -49,6 +49,8 @@ export default function ParentDashboard() {
   const [loading, setLoading] = useState(true);
   const [hasPreschoolChild, setHasPreschoolChild] = useState(false);
   const [outstandingFeeBalance, setOutstandingFeeBalance] = useState<number>(0);
+  const [hasDailyCollectionChild, setHasDailyCollectionChild] = useState(false);
+  const [dailyFeeArrears, setDailyFeeArrears] = useState<number>(0);
   const isNavigating = useRef(false);
 
   const {
@@ -83,12 +85,29 @@ export default function ParentDashboard() {
             const cSnap = await getDocsFromServer(childrenQuery);
 
             let totalFeeBalance = 0;
+            let hasDailyCollection = false;
+            let totalDailyArrears = 0;
+
             cSnap.docs.forEach((dSnap) => {
               const childData = dSnap.data() as any;
               const tuitionBal = Math.max(0, childData.balance || 0);
               const serviceArrears = Math.max(0, childData.dailyArrears || 0);
               totalFeeBalance += (tuitionBal + serviceArrears);
+
+              const isFeeding = childData.isFeeding === true;
+              const isBus = childData.isBus === true || !!childData.busLocation;
+              const takesExtra = childData.takesExtraClasses === true;
+
+              if (isFeeding || isBus || takesExtra) {
+                hasDailyCollection = true;
+              }
+              totalDailyArrears += serviceArrears;
             });
+
+            if (isMounted) {
+              setHasDailyCollectionChild(hasDailyCollection);
+              setDailyFeeArrears(totalDailyArrears);
+            }
 
             try {
               const feeRecordsQ = query(
@@ -182,6 +201,7 @@ export default function ParentDashboard() {
           icon: "happy-outline",
           color: "#ec4899",
           path: "/parent-dashboard/preschool-remarks",
+          featureId: "parent_behavioral_remarks",
         }] : []),
         {
           title: "Recent Scores",
@@ -233,6 +253,17 @@ export default function ParentDashboard() {
           color: "#f59e0b",
           path: "/parent-dashboard/student-fee-history",
         },
+        ...(hasDailyCollectionChild
+          ? [
+              {
+                title: "Daily Collection Fees",
+                subtitle: "Daily fees & arrears",
+                icon: "calendar-outline",
+                color: "#10b981",
+                path: "/parent-dashboard/daily-fees",
+              },
+            ]
+          : []),
         {
           title: "Payment Receipts",
           subtitle: "Transaction history",
@@ -457,6 +488,27 @@ export default function ParentDashboard() {
                     </Text>
                   </View>
                   <SVGIcon name="chevron-forward" size={18} color="#EF4444" />
+                </TouchableOpacity>
+              </Animatable.View>
+            )}
+
+            {dailyFeeArrears > 0 && (
+              <Animatable.View animation="fadeInDown" duration={600} style={[styles.notificationBanner, { backgroundColor: "#FFFBEB", borderColor: "#F59E0B", marginBottom: 16 }]}>
+                <TouchableOpacity
+                  style={styles.bannerContent}
+                  onPress={() => router.push("/parent-dashboard/daily-fees" as any)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.bannerIconBox, { backgroundColor: "#FEF3C7" }]}>
+                    <SVGIcon name="calendar-outline" size={22} color="#D97706" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.bannerTitle, { color: "#92400E" }]}>Daily Fee Arrears Notice 🍲🚌📚</Text>
+                    <Text style={[styles.bannerText, { color: "#B45309" }]}>
+                      Unpaid daily collection arrears of ₵{dailyFeeArrears.toLocaleString("en-US", { minimumFractionDigits: 2 })}. Tap to view daily breakdown & accumulated payment.
+                    </Text>
+                  </View>
+                  <SVGIcon name="chevron-forward" size={18} color="#D97706" />
                 </TouchableOpacity>
               </Animatable.View>
             )}

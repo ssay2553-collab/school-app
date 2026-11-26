@@ -37,6 +37,7 @@ import {
     useAdmissionCharges,
 } from "../../hooks/admin-dashboard/useAdmissionCharges";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { getStudentFinalEmail } from "../../utils/authUnify";
 
 const THEME = {
   primary: "#6366F1", // Admission Indigo
@@ -209,6 +210,21 @@ export default function AdmissionCharges() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTerm, setSelectedTerm] = useState<string | null>(null);
 
+  // Registration Modal State
+  const [registerModalVisible, setRegisterModalVisible] = useState(false);
+  const [regFullName, setRegFullName] = useState("");
+  const [regClassId, setRegClassId] = useState("");
+  const [regClassName, setRegClassName] = useState("");
+  const [regUsername, setRegUsername] = useState("");
+  const [regPassword, setRegPassword] = useState("123456");
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [regParent1Name, setRegParent1Name] = useState("");
+  const [regParent1Phone, setRegParent1Phone] = useState("");
+  const [regParent2Name, setRegParent2Name] = useState("");
+  const [regParent2Phone, setRegParent2Phone] = useState("");
+  const [regParentLinkCode, setRegParentLinkCode] = useState("");
+  const [isUsernameCustom, setIsUsernameCustom] = useState(false);
+
   const {
     loading,
     refreshing,
@@ -239,6 +255,7 @@ export default function AdmissionCharges() {
     openPaymentModal,
     deletePayment,
     handleBulkImport,
+    handleRegisterStudent,
   } = useAdmissionCharges({
     appUser,
     acadConfig,
@@ -247,6 +264,76 @@ export default function AdmissionCharges() {
     searchQuery,
     selectedTerm,
   });
+
+  const openRegisterModal = useCallback(() => {
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const initialClass = classes.find((c) => c.id === selectedClassId) || classes[0];
+    setRegParentLinkCode(code);
+    setRegClassId(initialClass?.id || "");
+    setRegClassName(initialClass?.name || "");
+    setRegFullName("");
+    setRegUsername("");
+    setRegPassword("123456");
+    setRegParent1Name("");
+    setRegParent1Phone("");
+    setRegParent2Name("");
+    setRegParent2Phone("");
+    setIsUsernameCustom(false);
+    setRegisterModalVisible(true);
+  }, [selectedClassId, classes]);
+
+  const handleFullNameChange = (text: string) => {
+    setRegFullName(text);
+    if (!isUsernameCustom) {
+      const autoUser = text
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, "")
+        .replace(/\s+/g, ".")
+        .replace(/^\.|\.$/g, "");
+      setRegUsername(autoUser);
+    }
+  };
+
+  const handleUsernameChange = (text: string) => {
+    setRegUsername(text);
+    setIsUsernameCustom(true);
+  };
+
+  const handleRegisterSubmit = async () => {
+    if (!regFullName.trim()) {
+      showToast({ message: "Please enter student's full name", type: "error" });
+      return;
+    }
+    if (!regClassName && !regClassId) {
+      showToast({ message: "Please select a class name", type: "error" });
+      return;
+    }
+    if (!regParent1Name.trim()) {
+      showToast({ message: "Please enter Parent 1 name", type: "error" });
+      return;
+    }
+    if (!regParent1Phone.trim()) {
+      showToast({ message: "Please enter Parent 1 phone number", type: "error" });
+      return;
+    }
+
+    const success = await handleRegisterStudent({
+      fullName: regFullName,
+      classId: regClassId,
+      className: regClassName,
+      username: regUsername,
+      password: regPassword,
+      parent1Name: regParent1Name,
+      parent1Phone: regParent1Phone,
+      parent2Name: regParent2Name,
+      parent2Phone: regParent2Phone,
+      parentLinkCode: regParentLinkCode,
+    });
+
+    if (success) {
+      setRegisterModalVisible(false);
+    }
+  };
 
   const filteredStudents = useMemo(() => {
     const lower = searchQuery.toLowerCase().trim();
@@ -372,6 +459,31 @@ export default function AdmissionCharges() {
             />
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
+            <TouchableOpacity
+              onPress={openRegisterModal}
+              style={[
+                styles.refreshRound,
+                {
+                  width: "auto",
+                  paddingHorizontal: 12,
+                  flexDirection: "row",
+                  gap: 6,
+                  backgroundColor: THEME.primary,
+                },
+              ]}
+              activeOpacity={0.7}
+            >
+              <SVGIcon name="person-add" size={18} color="#fff" />
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "800",
+                  color: "#fff",
+                }}
+              >
+                New Student
+              </Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={handleBulkImport}
               style={[
@@ -932,6 +1044,340 @@ export default function AdmissionCharges() {
                   </Text>
                 )}
               </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Student Registration Modal */}
+      <Modal visible={registerModalVisible} transparent animationType="slide">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.overlay}
+        >
+          <View style={[styles.sheetBody, { maxHeight: "90%" }]}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <View>
+                <Text style={styles.sheetTitle}>Register Student</Text>
+                <Text
+                  style={{ fontSize: 10, fontWeight: "800", color: VIBE.muted }}
+                >
+                  DIRECT ENROLLMENT & ACCOUNT CREATION
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setRegisterModalVisible(false)}
+                style={styles.closeRound}
+                activeOpacity={0.7}
+              >
+                <SVGIcon name="close" size={24} color={VIBE.muted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 40, gap: 16 }}
+            >
+              {/* Student Details */}
+              <View style={{ gap: 12 }}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "900",
+                    color: THEME.primary,
+                    letterSpacing: 1,
+                  }}
+                >
+                  STUDENT DETAILS
+                </Text>
+
+                <View>
+                  <Text style={styles.breakdownLabel}>STUDENT FULL NAME *</Text>
+                  <TextInput
+                    style={[styles.pillInput, { fontSize: 15 }]}
+                    placeholder="e.g. Kofi Mensah"
+                    value={regFullName}
+                    onChangeText={handleFullNameChange}
+                  />
+                </View>
+
+                <View>
+                  <Text style={styles.breakdownLabel}>CLASS NAME *</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+                  >
+                    {classes.map((c) => {
+                      const isSelected = regClassName === c.name || regClassId === c.id;
+                      return (
+                        <TouchableOpacity
+                          key={c.id || c.name}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            setRegClassId(c.id);
+                            setRegClassName(c.name);
+                          }}
+                          style={{
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            backgroundColor: isSelected
+                              ? THEME.primary
+                              : VIBE.light,
+                            borderWidth: 1.5,
+                            borderColor: isSelected
+                              ? THEME.primary
+                              : VIBE.border,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              fontWeight: isSelected ? "900" : "700",
+                              color: isSelected ? "#fff" : VIBE.text,
+                            }}
+                          >
+                            {c.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
+                <View>
+                  <Text style={styles.breakdownLabel}>AUTO-GENERATED USERNAME *</Text>
+                  <TextInput
+                    style={[styles.pillInput, { fontSize: 15 }]}
+                    placeholder="e.g. kofi.mensah"
+                    value={regUsername}
+                    onChangeText={handleUsernameChange}
+                    autoCapitalize="none"
+                  />
+                  <Text
+                    style={{
+                      fontSize: 10,
+                      fontWeight: "700",
+                      color: VIBE.muted,
+                      marginTop: 4,
+                      marginLeft: 4,
+                    }}
+                  >
+                    Login Email:{" "}
+                    {getStudentFinalEmail(regUsername || "username")}
+                  </Text>
+                </View>
+
+                <View>
+                  <Text style={styles.breakdownLabel}>PASSWORD *</Text>
+                  <View style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: "#FFFFFF",
+                    borderWidth: 1,
+                    borderColor: "#E2E8F0",
+                    borderRadius: 16,
+                    paddingHorizontal: 14,
+                    height: 54,
+                  }}>
+                    <TextInput
+                      style={[styles.pillInput, { flex: 1, borderWidth: 0, padding: 0, height: "100%", backgroundColor: "transparent", fontSize: 15 }]}
+                      placeholder="Default: 123456"
+                      value={regPassword}
+                      onChangeText={setRegPassword}
+                      secureTextEntry={!showRegPassword}
+                    />
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <TouchableOpacity onPress={() => setShowRegPassword(!showRegPassword)} activeOpacity={0.7}>
+                        <SVGIcon name={showRegPassword ? "eye-off" : "eye"} size={20} color="#64748B" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setRegPassword("")} activeOpacity={0.7}>
+                        <SVGIcon name="close" size={18} color="#64748B" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Parent Info Section */}
+              <View style={{ gap: 12, marginTop: 8 }}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "900",
+                    color: THEME.primary,
+                    letterSpacing: 1,
+                  }}
+                >
+                  PARENT / GUARDIAN DETAILS
+                </Text>
+
+                <View>
+                  <Text style={styles.breakdownLabel}>PARENT 1 NAME *</Text>
+                  <TextInput
+                    style={[styles.pillInput, { fontSize: 15 }]}
+                    placeholder="Father/Mother/Guardian 1 Name"
+                    value={regParent1Name}
+                    onChangeText={setRegParent1Name}
+                  />
+                </View>
+
+                <View>
+                  <Text style={styles.breakdownLabel}>PARENT 1 PHONE NUMBER *</Text>
+                  <TextInput
+                    style={[styles.pillInput, { fontSize: 15 }]}
+                    placeholder="e.g. 0241234567"
+                    keyboardType="phone-pad"
+                    value={regParent1Phone}
+                    onChangeText={setRegParent1Phone}
+                  />
+                </View>
+
+                <View>
+                  <Text style={styles.breakdownLabel}>PARENT 2 NAME (OPTIONAL)</Text>
+                  <TextInput
+                    style={[styles.pillInput, { fontSize: 15 }]}
+                    placeholder="Second Parent/Guardian Name"
+                    value={regParent2Name}
+                    onChangeText={setRegParent2Name}
+                  />
+                </View>
+
+                <View>
+                  <Text style={styles.breakdownLabel}>
+                    PARENT 2 PHONE NUMBER (OPTIONAL)
+                  </Text>
+                  <TextInput
+                    style={[styles.pillInput, { fontSize: 15 }]}
+                    placeholder="e.g. 0501234567"
+                    keyboardType="phone-pad"
+                    value={regParent2Phone}
+                    onChangeText={setRegParent2Phone}
+                  />
+                </View>
+              </View>
+
+              {/* System Auto-Generated Data Box */}
+              <View
+                style={{
+                  backgroundColor: VIBE.light,
+                  borderRadius: 16,
+                  padding: 14,
+                  gap: 10,
+                  marginTop: 8,
+                  borderWidth: 1,
+                  borderColor: VIBE.border,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "900",
+                    color: VIBE.muted,
+                    letterSpacing: 1,
+                  }}
+                >
+                  SYSTEM AUTO-GENERATED DATA
+                </Text>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <View>
+                    <Text style={{ fontSize: 10, color: VIBE.muted, fontWeight: "700" }}>
+                      DATE OF ADMISSION
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "800",
+                        color: VIBE.text,
+                        marginTop: 2,
+                      }}
+                    >
+                      {moment().format("MMM DD, YYYY")}
+                    </Text>
+                  </View>
+
+                  <View style={{ alignItems: "flex-end" }}>
+                    <Text style={{ fontSize: 10, color: VIBE.muted, fontWeight: "700" }}>
+                      STUDENT / PARENT LINK CODE
+                    </Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        marginTop: 2,
+                      }}
+                    >
+                      <View
+                        style={{
+                          backgroundColor: THEME.primary + "20",
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 6,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            fontWeight: "900",
+                            color: THEME.primary,
+                          }}
+                        >
+                          {regParentLinkCode}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => {
+                          const code = Math.random()
+                            .toString(36)
+                            .substring(2, 8)
+                            .toUpperCase();
+                          setRegParentLinkCode(code);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <SVGIcon name="refresh" size={16} color={THEME.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                onPress={handleRegisterSubmit}
+                disabled={saving}
+                activeOpacity={0.8}
+                style={{ marginTop: 10 }}
+              >
+                <LinearGradient
+                  colors={[THEME.primary, THEME.secondary]}
+                  style={[
+                    styles.saveBtn,
+                    Platform.OS === "web" && ({ cursor: "pointer" } as any),
+                  ]}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <Text style={styles.saveBtnText}>
+                        REGISTER & ENROLL STUDENT
+                      </Text>
+                      <SVGIcon name="person-add" size={20} color="#fff" />
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>

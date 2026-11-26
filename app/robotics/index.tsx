@@ -26,12 +26,14 @@ import { ChallengeLevel, CHALLENGES } from '../../data/robotics/challenges';
 import { getLocalRoboticsProgress, saveLocalRoboticsProgress } from '../../services/robotics/roboticsStorage';
 import { executeRoboticsProgram, hasReachedTarget } from '../../services/robotics/roboticsEngine';
 import { syncRoboticsProgressToFirebase } from '../../services/robotics/roboticsSync';
+import { isTeacherUser, isAdminUser } from '../../utils/authUnify';
 
 export default function RoboticsIndexScreen() {
   const router = useRouter();
   const config = useSchoolConfig();
   const primaryColor = config.brandPrimary || '#6366F1';
   const { appUser } = useAuth();
+  const isTeacherOrAdmin = isTeacherUser(appUser) || isAdminUser(appUser);
 
   const [activeTab, setActiveTab] = useState<string>('learn');
   const [completedLessons, setCompletedLessons] = useState<string[]>([]);
@@ -550,7 +552,7 @@ export default function RoboticsIndexScreen() {
           syncStatus={syncStatus}
         />
 
-          <RoboticsDashboard activeTab={activeTab} onChangeTab={setActiveTab} primaryColor={primaryColor}>
+          <RoboticsDashboard activeTab={activeTab} onChangeTab={setActiveTab} primaryColor={primaryColor} isTeacherOrAdmin={isTeacherOrAdmin}>
           {activeTab === 'learn' && (
             <RoboticsLessons
               completedLessons={completedLessons}
@@ -649,7 +651,7 @@ export default function RoboticsIndexScreen() {
             <RoboticsAchievements earnedBadges={earnedBadges} totalPoints={totalPoints} />
           )}
 
-          {activeTab === 'teacher' && (
+          {activeTab === 'teacher' && isTeacherOrAdmin && (
             <TeacherRoboticsDashboard
               primaryColor={primaryColor}
               onExportProgress={() => Alert.alert('Export', 'Student progress data exported successfully.')}

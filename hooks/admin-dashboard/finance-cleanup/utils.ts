@@ -312,7 +312,15 @@ export const calculateFeeBreakdown = (
     }
 
     if (isPayment) {
-      waterfallPool.push(amount);
+      if (
+        category === "tuition" ||
+        category === "tuition_credit" ||
+        category === "credit"
+      ) {
+        waterfallPool.push(amount);
+      } else {
+        summary[category].paid += amount;
+      }
     } else {
       summary[category].billed += amount;
     }

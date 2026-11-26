@@ -129,6 +129,16 @@ export const useAdmissionCharges = ({
 
       const snap = await getDocs(q);
 
+      let uQuery = query(
+        collection(db, "users"),
+        where("role", "==", "student"),
+        where("isNewAdmission", "==", true)
+      );
+      if (selectedClassId !== "all") {
+        uQuery = query(uQuery, where("classId", "==", selectedClassId));
+      }
+      const uSnap = await getDocs(uQuery);
+
       let totalCollected = 0;
       let totalBilled = 0;
       let t1Uids = new Set();
@@ -137,6 +147,19 @@ export const useAdmissionCharges = ({
       let t1Rev = 0;
       let t2Rev = 0;
       let t3Rev = 0;
+
+      uSnap.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.admissionAcademicYear && data.admissionAcademicYear !== year) return;
+        const termStr = (data.admissionTerm || "Term 1").toLowerCase();
+        const isT1 = termStr.includes("1");
+        const isT2 = termStr.includes("2");
+        const isT3 = termStr.includes("3");
+
+        if (isT1) t1Uids.add(doc.id);
+        if (isT2) t2Uids.add(doc.id);
+        if (isT3) t3Uids.add(doc.id);
+      });
 
       snap.docs.forEach(doc => {
         const data = doc.data();
@@ -198,22 +221,49 @@ export const useAdmissionCharges = ({
 
       const snap = await getDocs(q);
 
-      let uids: string[] = [];
+      let uQuery = query(
+        collection(db, "users"),
+        where("role", "==", "student"),
+        where("isNewAdmission", "==", true)
+      );
+      if (selectedClassId !== "all") {
+        uQuery = query(uQuery, where("classId", "==", selectedClassId));
+      }
+      const uSnap = await getDocs(uQuery);
+
+      let uids = new Set<string>();
+
+      uSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data.admissionAcademicYear && data.admissionAcademicYear !== year) return;
+        const docTerm = (data.admissionTerm || "").toLowerCase();
+        if (termName) {
+          const targetNum = termName.match(/\d/)?.[0];
+          const matches = targetNum ? docTerm.includes(targetNum) : docTerm === termName.toLowerCase();
+          if (matches || !docTerm) uids.add(d.id);
+        } else {
+          uids.add(d.id);
+        }
+      });
+
       if (termName) {
         const targetNum = termName.match(/\d/)?.[0];
-        uids = Array.from(new Set(
-          snap.docs
-            .filter(d => {
-              const docTerm = (d.data().term || "").toLowerCase();
-              return targetNum ? docTerm.includes(targetNum) : docTerm === termName.toLowerCase();
-            })
-            .map(d => d.data().studentUid)
-        ));
+        snap.docs.forEach(d => {
+          const data = d.data();
+          const docTerm = (data.term || "").toLowerCase();
+          const matches = targetNum ? docTerm.includes(targetNum) : docTerm === termName.toLowerCase();
+          if (matches && data.studentUid) {
+            uids.add(data.studentUid);
+          }
+        });
       } else {
-        uids = Array.from(new Set(snap.docs.map(d => d.data().studentUid)));
+        snap.docs.forEach(d => {
+          if (d.data().studentUid) uids.add(d.data().studentUid);
+        });
       }
 
-      if (uids.length === 0) {
+      const uidList = Array.from(uids);
+      if (uidList.length === 0) {
         if (isMounted.current) {
           setStudents([]);
         }
@@ -221,12 +271,12 @@ export const useAdmissionCharges = ({
       }
 
       const studentList: Student[] = [];
-      for (let i = 0; i < uids.length; i += 30) {
+      for (let i = 0; i < uidList.length; i += 30) {
         if (!isMounted.current) return;
-        const batchUids = uids.slice(i, i + 30);
+        const batchUids = uidList.slice(i, i + 30);
         const uq = query(collection(db, "users"), where(documentId(), "in", batchUids));
-        const uSnap = await getDocs(uq);
-        uSnap.docs.forEach(d => {
+        const batchUSnap = await getDocs(uq);
+        batchUSnap.docs.forEach(d => {
           const data = d.data();
           studentList.push({
             uid: d.id,
@@ -234,7 +284,7 @@ export const useAdmissionCharges = ({
             classId: data.classId || "unknown",
             className: data.className || "Class",
             admissionPaid: data.admissionPaid || 0,
-            admissionBill: data.admissionBill || 0,
+            admissionBill: data.admissionBill || data.admissionFee || 0,
             admissionBalance: data.admissionBalance || 0,
             walletBalance: data.walletBalance || 0,
             ptaBalance: data.ptaBalance || 0,
@@ -926,6 +976,204 @@ export const useAdmissionCharges = ({
     }
   };
 
+  const handleRegisterStudent = useCallback(
+    async (params: {
+      fullName: string;
+      classId?: string;
+      className?: string;
+      username: string;
+      password?: string;
+      parent1Name: string;
+      parent1Phone: string;
+      parent2Name?: string;
+      parent2Phone?: string;
+      parentLinkCode?: string;
+    }) => {
+      setSaving(true);
+      try {
+        const {
+          fullName,
+          classId: inputClassId = "",
+          className: inputClassName = "",
+          username,
+          password = "123456",
+          parent1Name,
+          parent1Phone,
+          parent2Name = "",
+          parent2Phone = "",
+          parentLinkCode: customCode,
+        } = params;
+
+        const trimmedFullName = fullName.trim();
+        if (!trimmedFullName) throw new Error("Student full name is required.");
+
+        // Resolve class by name or ID for unambiguous identification
+        const matchedClass = classes.find(
+          (c) =>
+            (inputClassId && c.id === inputClassId) ||
+            (inputClassName && c.name.toLowerCase() === inputClassName.toLowerCase()) ||
+            (inputClassId && c.name.toLowerCase() === inputClassId.toLowerCase()),
+        );
+
+        const classId = matchedClass ? matchedClass.id : inputClassId;
+        const className = matchedClass ? matchedClass.name : (inputClassName || inputClassId);
+
+        if (!className && !classId) throw new Error("Please select a valid class name.");
+
+        const autoUser = trimmedFullName
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, "")
+          .replace(/\s+/g, ".")
+          .replace(/^\.|\.$/g, "");
+        const cleanUsername = username.trim() || autoUser;
+        if (!cleanUsername) throw new Error("Username is required.");
+
+        const nameParts = trimmedFullName.split(/\s+/);
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || firstName;
+
+        const email = getStudentFinalEmail(cleanUsername);
+        const cleanPassword = password.trim() || "123456";
+
+        const firebaseConfig = (SCHOOL_CONFIG as any).firebase;
+        if (!firebaseConfig || !firebaseConfig.apiKey) {
+          throw new Error("Invalid school configuration: Firebase credentials missing.");
+        }
+
+        const secondaryAppName = `reg-student-${Date.now()}`;
+        const secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+        const secondaryAuth = getAuth(secondaryApp);
+
+        const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+        const studentCode = customCode || generateCode();
+        const parentLinkCode = studentCode;
+
+        let authUid = "";
+        let status = "pending_activation";
+        let hasLoginEnabled = false;
+
+        try {
+          const userCred = await createUserWithEmailAndPassword(
+            secondaryAuth,
+            email,
+            cleanPassword,
+          );
+          authUid = userCred.user.uid;
+          status = "active";
+          hasLoginEnabled = true;
+        } catch (authError: any) {
+          const errorCode = authError?.code || "auth-error";
+          if (errorCode === "auth/email-already-in-use") {
+            throw new Error(`Username "${cleanUsername}" (${email}) is already taken.`);
+          } else if (errorCode === "auth/weak-password") {
+            throw new Error("Password must be at least 6 characters long.");
+          } else {
+            console.warn("Auth registration fallback:", authError);
+          }
+        } finally {
+          await deleteApp(secondaryApp);
+        }
+
+        const tempId = authUid || doc(collection(db, "users")).id;
+        const now = Timestamp.now();
+        const dateStr = moment().format("YYYY-MM-DD");
+
+        const newUserDoc: any = {
+          uid: tempId,
+          role: "student",
+          status: status,
+          email: email.toLowerCase(),
+          hasLoginEnabled: hasLoginEnabled,
+          classId: classId,
+          className: className,
+          parentLinkCode: parentLinkCode,
+          studentCode: studentCode,
+          signupCode: parentLinkCode,
+          createdAt: now,
+          dateOfAdmission: now,
+          admissionDate: dateStr,
+          isNewAdmission: true,
+          admissionAcademicYear: acadConfig.academicYear || moment().year().toString(),
+          admissionTerm: acadConfig.currentTerm || "Term 1",
+          profile: {
+            firstName,
+            lastName,
+            fullName: `${firstName} ${lastName}`.trim(),
+            email: email.toLowerCase(),
+            parentName: parent1Name.trim(),
+            parentPhone: parent1Phone.trim(),
+            parent2Name: parent2Name.trim(),
+            parent2Phone: parent2Phone.trim(),
+            emergencyPhone: (parent1Phone || parent2Phone || "").trim(),
+          },
+        };
+
+        if (authUid) {
+          newUserDoc.authUid = authUid;
+        }
+
+        const batch = writeBatch(db);
+        batch.set(doc(db, "users", tempId), newUserDoc);
+
+        const paymentId = doc(collection(db, "feePayments")).id;
+        const admissionRecord = {
+          id: paymentId,
+          studentUid: tempId,
+          classId: classId,
+          className: className,
+          academicYear: acadConfig.academicYear || moment().year().toString(),
+          term: acadConfig.currentTerm || "Term 1",
+          type: "admission",
+          amount: 0,
+          createdAt: serverTimestamp(),
+        };
+        batch.set(doc(db, "feePayments", paymentId), admissionRecord);
+
+        const codeData: any = {
+          code: parentLinkCode,
+          intendedForRole: "student",
+          used: hasLoginEnabled,
+          createdBy: appUser?.uid,
+          createdAt: serverTimestamp(),
+          classId: classId,
+          className: className,
+        };
+        batch.set(doc(db, "signupCodes", parentLinkCode), codeData);
+
+        const statsRef = doc(db, "stats", "global");
+        batch.set(statsRef, { totalStudents: increment(1) }, { merge: true });
+
+        await batch.commit();
+
+        showToast?.({
+          message: `Student "${trimmedFullName}" registered in ${className}!`,
+          type: "success",
+        });
+
+        const alertMsg = `Student Registered!\n\nName: ${trimmedFullName}\nClass: ${className}\nUsername: ${cleanUsername}\nEmail: ${email}\nPassword: ${cleanPassword}\nParent Link Code: ${parentLinkCode}\nDate of Admission: ${moment().format("MMM DD, YYYY")}`;
+
+        if (Platform.OS === "web") {
+          alert(alertMsg);
+        } else {
+          Alert.alert("Registration Successful", alertMsg, [{ text: "OK" }]);
+        }
+
+        handleRefresh();
+        return true;
+      } catch (error: any) {
+        console.error("Student registration error:", error);
+        showToast?.({
+          message: error.message || "Failed to register student",
+          type: "error",
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [appUser?.uid, classes, showToast, handleRefresh],
+  );
+
   return {
     loading,
     refreshing,
@@ -939,6 +1187,7 @@ export const useAdmissionCharges = ({
     deletePayment,
     fetchStudents,
     handleBulkImport,
+    handleRegisterStudent,
 
     // UI state & handlers
     paymentModalVisible,

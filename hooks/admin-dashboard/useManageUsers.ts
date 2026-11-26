@@ -28,6 +28,7 @@ import {
 import { httpsCallable } from "firebase/functions";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Platform, Share } from "react-native";
+import moment from "moment";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { db, functions } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
@@ -64,7 +65,11 @@ export function useManageUsers({
     };
   }, []);
 
-  const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
+  const currentUserRole = (
+    appUser?.adminRole ||
+    appUser?.profile?.adminRole ||
+    ""
+  ).toLowerCase().trim();
   const isSuperAdmin = [
     "proprietor",
     "proprietress",
@@ -608,6 +613,172 @@ export function useManageUsers({
     } finally {
       setLoading(false);
       isImportingRef.current = false;
+    }
+  };
+
+  const handleBulkRegisterStudents = async (
+    targetClassId: string,
+    studentEntries: Array<{
+      fullName: string;
+      username?: string;
+      password?: string;
+      parentName?: string;
+      parentPhone?: string;
+    }>
+  ) => {
+    if (!targetClassId || targetClassId === "all") {
+      showToast?.({ message: "Please select a target class for the students.", type: "error" });
+      return false;
+    }
+    if (!studentEntries || studentEntries.length === 0) {
+      showToast?.({ message: "Please add at least one student.", type: "error" });
+      return false;
+    }
+
+    setLoading(true);
+    let successCount = 0;
+    let errors: string[] = [];
+
+    const firebaseConfig = (SCHOOL_CONFIG as any).firebase;
+    if (!firebaseConfig || !firebaseConfig.apiKey) {
+      showToast?.({ message: "Invalid school configuration: Firebase credentials missing.", type: "error" });
+      setLoading(false);
+      return false;
+    }
+
+    const secondaryAppName = `bulk-reg-${Date.now()}`;
+    const secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+    const secondaryAuth = getAuth(secondaryApp);
+
+    try {
+      const matchedClass = allClasses.find((c) => c.id === targetClassId);
+      const className = matchedClass ? matchedClass.name : "Class";
+
+      const batch = writeBatch(db);
+      let batchCount = 0;
+
+      for (const entry of studentEntries) {
+        const trimmedName = (entry.fullName || "").trim();
+        if (!trimmedName) continue;
+
+        const autoUser = trimmedName
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, "")
+          .replace(/\s+/g, ".")
+          .replace(/^\.|\.$/g, "");
+        const username = (entry.username || "").trim() || autoUser;
+        const password = (entry.password || "").trim() || "123456";
+        const email = getStudentFinalEmail(username);
+
+        const nameParts = trimmedName.split(/\s+/);
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || firstName;
+
+        let authUid = "";
+        let status = "pending_activation";
+        let hasLoginEnabled = false;
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (email && password && password.length >= 6 && emailRegex.test(email)) {
+          try {
+            const userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+            authUid = userCred.user.uid;
+            status = "active";
+            hasLoginEnabled = true;
+          } catch (authErr: any) {
+            console.warn(`Auth error for ${email}:`, authErr);
+            errors.push(`${trimmedName}: ${authErr.message || authErr.code}`);
+          }
+        }
+
+        const tempId = authUid || doc(collection(db, "users")).id;
+        const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+        const studentCode = generateCode();
+        const parentLinkCode = studentCode;
+        const now = Timestamp.now();
+        const dateStr = moment().format("YYYY-MM-DD");
+
+        const newUserDoc: any = {
+          uid: tempId,
+          role: "student",
+          status: status,
+          email: email.toLowerCase(),
+          hasLoginEnabled: hasLoginEnabled,
+          classId: targetClassId,
+          className: className,
+          parentLinkCode: parentLinkCode,
+          studentCode: studentCode,
+          signupCode: parentLinkCode,
+          createdAt: now,
+          dateOfAdmission: now,
+          admissionDate: dateStr,
+          isNewAdmission: true,
+          admissionAcademicYear: acadConfig.academicYear || moment().year().toString(),
+          admissionTerm: acadConfig.currentTerm || "Term 1",
+          profile: {
+            firstName,
+            lastName,
+            fullName: `${firstName} ${lastName}`.trim(),
+            email: email.toLowerCase(),
+            parentName: (entry.parentName || "").trim(),
+            parentPhone: (entry.parentPhone || "").trim(),
+            emergencyPhone: (entry.parentPhone || "").trim(),
+          },
+        };
+
+        if (authUid) {
+          newUserDoc.authUid = authUid;
+        }
+
+        batch.set(doc(db, "users", tempId), newUserDoc);
+
+        const codeData: any = {
+          code: parentLinkCode,
+          intendedForRole: "student",
+          used: hasLoginEnabled,
+          createdBy: appUser?.uid,
+          createdAt: serverTimestamp(),
+          classId: targetClassId,
+          className: className,
+        };
+        batch.set(doc(db, "signupCodes", parentLinkCode), codeData);
+
+        const statsRef = doc(db, "stats", "global");
+        batch.set(statsRef, { totalStudents: increment(1) }, { merge: true });
+
+        successCount++;
+        batchCount++;
+
+        if (batchCount >= 400) {
+          await batch.commit();
+          batchCount = 0;
+        }
+      }
+
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      let msg = `Successfully created ${successCount} student account(s) in ${className}!`;
+      if (errors.length > 0) {
+        msg += `\nErrors:\n${errors.slice(0, 3).join("\n")}`;
+      }
+      showToast?.({ message: `Successfully registered ${successCount} student(s)!`, type: "success" });
+
+      if (Platform.OS === "web") {
+        alert(msg);
+      } else {
+        Alert.alert("Bulk Registration Complete", msg, [{ text: "OK" }]);
+      }
+
+      return true;
+    } catch (e: any) {
+      console.error("Bulk student registration error:", e);
+      showToast?.({ message: `Registration failed: ${e.message}`, type: "error" });
+      return false;
+    } finally {
+      await deleteApp(secondaryApp);
+      setLoading(false);
     }
   };
 
@@ -2423,5 +2594,6 @@ export function useManageUsers({
     runFinanceCleanup,
     isFinanceCleaning,
     handleLinkStudentByCode,
+    handleBulkRegisterStudents,
   };
 }

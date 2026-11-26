@@ -126,7 +126,8 @@ export default function ForgotPasswordScreen() {
       }
 
       // Check if it's a real external email or synthetic student handle
-      const isSynthetic = targetEmail.includes(".edueaz.com") || !targetEmail.includes("@");
+      const domainSlug = (SCHOOL_CONFIG.schoolId || 'student').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const isSynthetic = targetEmail.includes(`@${domainSlug}.com`) || targetEmail.includes(".edueaz.com") || !targetEmail.includes("@");
 
       if (isSynthetic || userData?.role === "student") {
         // Create Password Reset Request in Firestore for School Super Admin

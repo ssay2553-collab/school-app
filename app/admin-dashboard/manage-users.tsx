@@ -21,6 +21,7 @@ import { BulkActionBar } from "../../components/admin-dashboard/manage-users/Bul
 import { RoleSelector } from "../../components/admin-dashboard/manage-users/RoleSelector";
 import { UserCard } from "../../components/admin-dashboard/manage-users/UserCard";
 import { UserDetailModal } from "../../components/admin-dashboard/manage-users/UserDetailModal";
+import { BulkStudentRegisterModal } from "../../components/shared/BulkStudentRegisterModal";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -136,9 +137,11 @@ export default function ManageUsers() {
     runFinanceCleanup,
     isFinanceCleaning,
     handleLinkStudentByCode,
+    handleBulkRegisterStudents,
   } = useManageUsers({ appUser, acadConfig, showToast, router });
 
   const [pendingResetRequests, setPendingResetRequests] = useState<any[]>([]);
+  const [bulkRegisterModalVisible, setBulkRegisterModalVisible] = useState(false);
 
   useEffect(() => {
     if (!appUser) return;
@@ -362,6 +365,22 @@ export default function ManageUsers() {
                   >
                     <SVGIcon name="cloud-upload" size={18} color="#fff" />
                     <Text style={styles.graduateBtnText}>Bulk CSV</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.graduateBtn,
+                      {
+                        backgroundColor: "#10B981",
+                        flexDirection: "row",
+                        gap: 8,
+                        paddingHorizontal: 16,
+                      },
+                    ]}
+                    onPress={() => setBulkRegisterModalVisible(true)}
+                  >
+                    <SVGIcon name="person-add" size={18} color="#fff" />
+                    <Text style={styles.graduateBtnText}>Bulk Register</Text>
                   </TouchableOpacity>
 
                   <View style={[styles.pickerContainer, { width: 220, flexDirection: 'row', alignItems: 'center', backgroundColor: selectedClassId !== 'all' ? '#EEF2FF' : '#F8FAFC', borderColor: selectedClassId !== 'all' ? '#C7D2FE' : '#E2E8F0' }]}>
@@ -639,6 +658,14 @@ export default function ManageUsers() {
           targetClassId={targetClassId}
           setTargetClassId={setTargetClassId}
           handlePromoteRepeat={handlePromoteRepeat}
+        />
+        <BulkStudentRegisterModal
+          visible={bulkRegisterModalVisible}
+          onClose={() => setBulkRegisterModalVisible(false)}
+          classes={allClasses}
+          selectedClassId={selectedClassId}
+          onRegister={handleBulkRegisterStudents}
+          showToast={showToast}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>

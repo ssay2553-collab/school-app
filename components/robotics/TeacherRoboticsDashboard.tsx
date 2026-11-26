@@ -13,6 +13,7 @@ import { collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimest
 import { RobotSimulator } from './RobotSimulator';
 import { TextCodeSandbox } from './TextCodeSandbox';
 import { executeRoboticsProgram, hasReachedTarget } from '../../services/robotics/roboticsEngine';
+import { isTeacherUser, isAdminUser } from '../../utils/authUnify';
 
 interface TeacherRoboticsDashboardProps {
   primaryColor: string;
@@ -48,7 +49,9 @@ export type RoboticsAssignmentItem = {
 
 export function TeacherRoboticsDashboard({ primaryColor, onExportProgress, onResetProgress }: TeacherRoboticsDashboardProps) {
   const { appUser } = useAuth();
-  const isAdmin = appUser?.role === 'admin' || !!(appUser as any)?.adminRole;
+  const isAdmin = isAdminUser(appUser);
+  const isTeacher = isTeacherUser(appUser);
+  const isAuthorized = isTeacher || isAdmin;
 
   const [classList, setClassList] = useState<ClassItem[]>([]);
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
@@ -76,6 +79,10 @@ export function TeacherRoboticsDashboard({ primaryColor, onExportProgress, onRes
 
   // 1. Fetch Classes assigned to Teacher or All if Admin
   useEffect(() => {
+    if (!isAuthorized) {
+      setLoadingClasses(false);
+      return;
+    }
     const fetchClasses = async () => {
       setLoadingClasses(true);
       try {
@@ -86,27 +93,39 @@ export function TeacherRoboticsDashboard({ primaryColor, onExportProgress, onRes
         }));
 
         const assignedClassIds = getTeacherClasses(appUser);
-        let filtered = all;
-        if (!isAdmin && assignedClassIds.length > 0) {
+        let filtered: ClassItem[] = [];
+        if (isAdmin) {
+          filtered = all;
+        } else if (assignedClassIds.length > 0) {
           filtered = all.filter((c) => assignedClassIds.includes(c.id));
+        } else {
+          filtered = [];
         }
 
         const sorted = sortClasses(filtered);
         setClassList(sorted);
         if (sorted.length > 0) {
           setSelectedClass(sorted[0]);
+        } else {
+          setSelectedClass(null);
         }
       } catch (e) {
         console.error('Error fetching robotics teacher classes:', e);
-        const fallback = [{ id: 'class_1', name: 'Grade 5A' }, { id: 'class_2', name: 'Grade 5B' }];
-        setClassList(fallback);
-        setSelectedClass(fallback[0]);
+        const assignedClassIds = getTeacherClasses(appUser);
+        if (isAdmin || assignedClassIds.length > 0) {
+          const fallback = [{ id: 'class_1', name: 'Grade 5A' }, { id: 'class_2', name: 'Grade 5B' }];
+          setClassList(fallback);
+          setSelectedClass(fallback[0]);
+        } else {
+          setClassList([]);
+          setSelectedClass(null);
+        }
       } finally {
         setLoadingClasses(false);
       }
     };
     fetchClasses();
-  }, [appUser, isAdmin]);
+  }, [appUser, isAdmin, isAuthorized]);
 
   // 2. Fetch Live Students & Robotics Progress for Selected Class
   const fetchClassData = useCallback(async () => {
@@ -443,6 +462,20 @@ export function TeacherRoboticsDashboard({ primaryColor, onExportProgress, onRes
       Alert.alert('Export Error', 'Failed to generate PDF report.');
     }
   };
+
+  if (!isAuthorized) {
+    return (
+      <View style={{ padding: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, marginVertical: 20 }}>
+        <SVGIcon name="lock-closed" size={48} color="#94A3B8" />
+        <Text style={{ marginTop: 12, fontSize: 16, fontWeight: '700', color: '#475569', textAlign: 'center' }}>
+          Access Restricted
+        </Text>
+        <Text style={{ marginTop: 4, fontSize: 14, color: '#64748B', textAlign: 'center' }}>
+          The Teacher Dashboard is reserved for teachers and school administrators.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

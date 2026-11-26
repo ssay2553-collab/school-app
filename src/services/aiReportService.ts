@@ -74,7 +74,7 @@ export interface TermReportMetrics {
   pendingApprovalsCount: number;
 }
 
-export interface GeneratedAIReport {
+export interface GeneratedSmartReport {
   title: string;
   reportType: ReportType;
   generatedAt: string;
@@ -91,14 +91,16 @@ export interface GeneratedAIReport {
   feeItemsBreakdown?: FeeItemDetail[];
   dailyPaymentsBreakdown?: DailyPaymentsDetail;
 }
+export type GeneratedAIReport = GeneratedSmartReport;
 
-export interface AIAnswerResponse {
+export interface SmartAnswerResponse {
   question: string;
   directAnswer: string;
   keyMetrics: { label: string; value: string; badge?: string }[];
   takeaways: string[];
   suggestedAction: string;
 }
+export type AIAnswerResponse = SmartAnswerResponse;
 
 export interface FinancialOutcomeAnalysis {
   state: "deficit_loss" | "heavy_arrears" | "surplus_cleared" | "balanced";
@@ -213,8 +215,40 @@ export async function fetchTermReportMetrics(
       }
     });
 
-    let newAdmissionsCount = 0;
+    let newAdmissionsUids = new Set<string>();
     try {
+      usersSnap.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        const role = String(data.role || "").toLowerCase();
+        if (role === "student") {
+          const isNew = data.isNewAdmission === true || (data.admissionBill || 0) > 0;
+          const matchesYear = !data.admissionAcademicYear || data.admissionAcademicYear === academicYear;
+          const matchesTerm = !data.admissionTerm ||
+            data.admissionTerm.toLowerCase().includes(term.toLowerCase()) ||
+            term.toLowerCase().includes(String(data.admissionTerm).toLowerCase()) ||
+            term.toLowerCase() === "all";
+          if (isNew && matchesYear && matchesTerm) {
+            newAdmissionsUids.add(docSnap.id);
+          }
+        }
+      });
+
+      const paymentsSnap = await getDocs(collection(db, "feePayments"));
+      paymentsSnap.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        const type = String(data.type || "").toLowerCase();
+        if (type.includes("admission")) {
+          const matchesYear = !data.academicYear || data.academicYear === academicYear;
+          const matchesTerm = !data.term ||
+            data.term.toLowerCase().includes(term.toLowerCase()) ||
+            term.toLowerCase().includes(String(data.term).toLowerCase()) ||
+            term.toLowerCase() === "all";
+          if (matchesYear && matchesTerm && data.studentUid) {
+            newAdmissionsUids.add(data.studentUid);
+          }
+        }
+      });
+
       const chargesSnap = await getDocs(collection(db, "student_charges"));
       chargesSnap.docs.forEach((docSnap) => {
         const data = docSnap.data();
@@ -227,14 +261,17 @@ export async function fetchTermReportMetrics(
           description.includes("admission") ||
           feeType.includes("admission")
         ) {
-          if (data.academicYear === academicYear || !data.academicYear) {
-            newAdmissionsCount++;
+          const matchesYear = !data.academicYear || data.academicYear === academicYear;
+          const matchesTerm = !data.term || data.term.toLowerCase().includes(term.toLowerCase());
+          if (matchesYear && matchesTerm && data.studentUid) {
+            newAdmissionsUids.add(data.studentUid);
           }
         }
       });
     } catch (e) {
-      console.warn("[AIReport] Failed to fetch admission charges:", e);
+      console.warn("[AIReport] Failed to compute new admissions count:", e);
     }
+    const newAdmissionsCount = newAdmissionsUids.size;
 
     let totalAttendanceRecords = 0;
     let presentCount = 0;
@@ -596,24 +633,26 @@ export async function fetchTermReportMetrics(
   }
 }
 
-export async function generateAIReport(
+export async function generateSmartReport(
   reportType: ReportType,
   metrics: TermReportMetrics,
-): Promise<GeneratedAIReport> {
-  return synthesizeLocalAIReport(reportType, metrics);
+): Promise<GeneratedSmartReport> {
+  return synthesizeLocalSmartReport(reportType, metrics);
 }
+export const generateAIReport = generateSmartReport;
 
-export async function answerAIQuestion(
+export async function answerSmartQuestion(
   question: string,
   metrics: TermReportMetrics,
-): Promise<AIAnswerResponse> {
-  return synthesizeLocalAIQuestionAnswer(question, metrics);
+): Promise<SmartAnswerResponse> {
+  return synthesizeLocalSmartQuestionAnswer(question, metrics);
 }
+export const answerAIQuestion = answerSmartQuestion;
 
-function synthesizeLocalAIQuestionAnswer(
+function synthesizeLocalSmartQuestionAnswer(
   question: string,
   metrics: TermReportMetrics,
-): AIAnswerResponse {
+): SmartAnswerResponse {
   const q = question.toLowerCase();
   const finOutcome = analyzeFinancialOutcome(metrics);
 
@@ -636,10 +675,10 @@ function synthesizeLocalAIQuestionAnswer(
 /**
  * Intelligent Internal Executive Report Synthesis Engine - Enhanced Institutional Edition
  */
-function synthesizeLocalAIReport(
+function synthesizeLocalSmartReport(
   reportType: ReportType,
   metrics: TermReportMetrics,
-): GeneratedAIReport {
+): GeneratedSmartReport {
   const dateStr = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -697,7 +736,7 @@ function synthesizeLocalAIReport(
 
 ## 1. EXECUTIVE SUMMARY & STRATEGIC HEALTH 🎓
 **Academic Year:** ${metrics.academicYear} | **Term:** ${metrics.term} | **School:** ${metrics.schoolName}
-*Data Availability Indicator:* [Source: EduEaz Live Data & AI-Analysed Records]
+*Data Availability Indicator:* [Source: EduEaz Live Data & Smart-Analysed Records]
 
 ${finOutcome.headline}
 
@@ -737,8 +776,8 @@ ${classPopulations}
 - **Attendance Trends Throughout Term:** Stable attendance across mid-term weeks with minor fluctuations recorded around seasonal weather changes.
 
 ## 4. ACADEMIC PERFORMANCE & INSTRUCTIONAL STANDARDS 📚
-*Data Availability Indicator:* [Source: EduEaz Academic Records & AI Interpretation]
-*(Note: The system distinguishes between actual examination results and AI analysis. Scores and grade distributions below reflect actual terminal records.)*
+*Data Availability Indicator:* [Source: EduEaz Academic Records & Smart Interpretation]
+*(Note: The system distinguishes between actual examination results and smart analysis. Scores and grade distributions below reflect actual terminal records.)*
 
 - **Overall Academic Performance:** School-wide average score stands at **${metrics.averageScore}%** across ${metrics.totalAcademicRecords} evaluated records.
 - **Subject-by-Subject Performance:** Evaluated across core academic disciplines including Mathematics, Integrated Science, English Language, and Social Studies.
@@ -822,7 +861,7 @@ ${feeItemsRows}
 ${dailyAllocationsMarkdown}
 
 ## 10. CHALLENGES ENCOUNTERED & RISK ASSESSMENT ⚠️
-*Data Availability Indicator:* [Source: AI Evidence-Based Risk Analysis]
+*Data Availability Indicator:* [Source: Smart Evidence-Based Risk Analysis]
 
 - **Academic Challenges:** Remedial support required for students struggling in ${metrics.subjectsNeedingImprovement.join(", ") || "core subjects"}.
 - **Student Attendance and Discipline:** Sustaining 100% daily punctuality across morning assembly.
@@ -833,7 +872,7 @@ ${dailyAllocationsMarkdown}
 - **Technology and Administrative Challenges:** Ensuring robust internet connectivity during peak portal usage.
 
 ## 11. PRIORITIZED STRATEGIC RECOMMENDATIONS 🎯
-*Data Availability Indicator:* [Source: AI Evidence-Based Synthesis Connected to Actual Findings]
+*Data Availability Indicator:* [Source: Smart Evidence-Based Synthesis Connected to Actual Findings]
 
 ${finOutcome.recommendations.join("\n")}
 3. [Identified Finding: Attendance Rate at ${metrics.studentAttendanceRate}%] -> **Action:** Implement automated absentee parent alerts | **Priority:** High | **Department:** Attendance & IT | **Timeline:** Immediate | **Outcome:** Improved daily attendance compliance.

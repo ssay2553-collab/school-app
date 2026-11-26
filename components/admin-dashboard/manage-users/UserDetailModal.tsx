@@ -811,7 +811,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
 
                 {user.role !== "student" &&
                   user.role !== "parent" &&
-                  isSuperAdmin && (
+                  (isSuperAdmin || hasManageUsersAccess) && (
                     <TouchableOpacity
                       style={[
                         styles.actionButton,

@@ -1322,11 +1322,19 @@ export default function SharedScanAttendanceScreen() {
       if (freshUserSnap.exists()) setFetchedUser(activeUser);
       if (freshConfigSnap.exists()) setConfigData(activeConfig);
 
-      const adminLat = Number(activeConfig?.latitude);
-      const adminLng = Number(activeConfig?.longitude);
-      const allowedRadius = Number(activeConfig?.radius) || 50;
+      let locationsList = [];
+      if (activeConfig?.locations && Array.isArray(activeConfig.locations) && activeConfig.locations.length > 0) {
+        locationsList = activeConfig.locations;
+      } else if (activeConfig?.latitude !== undefined && activeConfig?.longitude !== undefined) {
+        locationsList = [{
+          name: 'Main Campus',
+          latitude: Number(activeConfig.latitude),
+          longitude: Number(activeConfig.longitude),
+          radius: Number(activeConfig.radius) || 50
+        }];
+      }
 
-      if (!activeConfig || isNaN(adminLat) || isNaN(adminLng)) {
+      if (!activeConfig || locationsList.length === 0) {
         showToast({
           message:
             "Attendance setup incomplete. Please ensure GPS & Late Threshold are saved in Staff Attendance Setup.",
@@ -1344,24 +1352,51 @@ export default function SharedScanAttendanceScreen() {
       const teacherLng = Number(location.longitude);
       const gpsAccuracy = Math.round(location.accuracy || 0);
 
-      const rawDistance = calculateDistanceInMeters(
-        teacherLat,
-        teacherLng,
-        adminLat,
-        adminLng,
-      );
-
       // Account for GPS accuracy error margin (web/desktop/classrooms often report large accuracy margins e.g. ±20,000m)
       const accuracyBuffer =
         Platform.OS === "web"
           ? Math.min(gpsAccuracy, 35000)
           : Math.min(gpsAccuracy, 500);
-      const effectiveDistance = Math.max(0, rawDistance - accuracyBuffer);
-      const distance = Math.round(effectiveDistance);
 
-      if (effectiveDistance > allowedRadius) {
+      let matchedLocation: any = null;
+      let minEffectiveDistance = Infinity;
+      let minRawDistance = Infinity;
+      let usedRadius = 50;
+
+      for (const loc of locationsList) {
+        const blockLat = Number(loc.latitude);
+        const blockLng = Number(loc.longitude);
+        const blockRadius = Number(loc.radius) || Number(activeConfig?.radius) || 50;
+
+        if (isNaN(blockLat) || isNaN(blockLng)) continue;
+
+        const rawDistance = calculateDistanceInMeters(
+          teacherLat,
+          teacherLng,
+          blockLat,
+          blockLng,
+        );
+        const effectiveDistance = Math.max(0, rawDistance - accuracyBuffer);
+
+        if (effectiveDistance < minEffectiveDistance) {
+          minEffectiveDistance = effectiveDistance;
+          minRawDistance = rawDistance;
+          usedRadius = blockRadius;
+        }
+
+        if (effectiveDistance <= blockRadius) {
+          matchedLocation = { ...loc, rawDistance, effectiveDistance, allowedRadius: blockRadius };
+          break;
+        }
+      }
+
+      const distance = Math.round(minEffectiveDistance);
+      const allowedRadius = usedRadius;
+
+      if (!matchedLocation) {
         const title = "Attendance Rejected 🚫";
-        const msg = `Location is outside the school perimeter!\n\nMeasured Distance: ${Math.round(rawDistance)} meters\nGPS Error Margin: ±${gpsAccuracy} meters\nEffective Distance: ${Math.round(effectiveDistance)} meters\nAllowed Perimeter: ${allowedRadius} meters\n\nDetected GPS: ${teacherLat.toFixed(5)}, ${teacherLng.toFixed(5)}\nSchool Center: ${adminLat.toFixed(5)}, ${adminLng.toFixed(5)}\n\nIf you are currently at the school, ask Admin to update the school GPS coordinates or increase allowed perimeter in Staff Attendance Setup.`;
+        const blocksDesc = locationsList.map((l: any) => `• ${l.name || 'Campus Block'}: (${Number(l.latitude).toFixed(5)}, ${Number(l.longitude).toFixed(5)}, Range: ${l.radius || activeConfig?.radius || 50}m)`).join('\n');
+        const msg = `Location is outside all configured school perimeters!\n\nClosest Block Distance: ${Math.round(minRawDistance)} meters\nGPS Error Margin: ±${gpsAccuracy} meters\nEffective Distance: ${Math.round(minEffectiveDistance)} meters\n\nConfigured School Blocks:\n${blocksDesc}\n\nDetected GPS: ${teacherLat.toFixed(5)}, ${teacherLng.toFixed(5)}\n\nIf you are currently at the school, ask Admin to update school GPS coordinates or add your block in Staff Attendance Setup.`;
 
         if (isAdmin) {
           if (Platform.OS === "web") {
@@ -1390,7 +1425,7 @@ export default function SharedScanAttendanceScreen() {
         } else {
           if (Platform.OS === "web") {
             showToast({
-              message: `Outside school perimeter (${Math.round(effectiveDistance)}m / max ${allowedRadius}m)`,
+              message: `Outside school perimeter (${Math.round(minEffectiveDistance)}m / max ${allowedRadius}m)`,
               type: "error",
             });
             alert(`${title}\n\n${msg}`);

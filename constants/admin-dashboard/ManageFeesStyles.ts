@@ -582,13 +582,13 @@ export const styles = StyleSheet.create({
   },
   modalInputs: { gap: 15, marginBottom: 30 },
   pillInput: {
-    backgroundColor: VIBE.bg,
-    borderRadius: 24,
-    padding: 18,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: VIBE.border,
-    fontSize: 20,
-    fontWeight: "900",
+    fontSize: 16,
+    fontWeight: "700",
     color: VIBE.text,
     ...Platform.select({
       web: {

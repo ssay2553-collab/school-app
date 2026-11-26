@@ -24,11 +24,16 @@ export const getStudentFinalEmail = (input: string): string => {
     return cleanInput;
   }
 
-  const domainSlug = (SCHOOL_CONFIG.schoolId || 'student')
+  const domain = (SCHOOL_CONFIG.emailDomain || SCHOOL_CONFIG.slug || SCHOOL_CONFIG.schoolId || 'student')
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
+    .trim();
 
-  return `${cleanInput}@${domainSlug}.edueaz.com`;
+  if (domain.includes('.')) {
+    return `${cleanInput}@${domain}.com`;
+  }
+
+  const cleanDomain = domain.replace(/[^a-z0-9]/g, '');
+  return `${cleanInput}@${cleanDomain}.com`;
 };
 
 /**

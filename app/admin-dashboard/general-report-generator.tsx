@@ -23,10 +23,14 @@ import { useAcademicConfig } from "../../contexts/AcademicContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import {
+    SmartAnswerResponse,
     AIAnswerResponse,
+    answerSmartQuestion,
     answerAIQuestion,
     fetchTermReportMetrics,
+    generateSmartReport,
     generateAIReport,
+    GeneratedSmartReport,
     GeneratedAIReport,
     ReportType,
     TermReportMetrics,
@@ -62,7 +66,7 @@ export default function GeneralReportGenerator() {
   // REPORT GENERATOR STATE
   const [generating, setGenerating] = useState<boolean>(false);
   const [progressStep, setProgressStep] = useState<string>("");
-  const [report, setReport] = useState<GeneratedAIReport | null>(null);
+  const [report, setReport] = useState<GeneratedSmartReport | null>(null);
 
   // EDITABLE REPORT STATE
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -74,7 +78,7 @@ export default function GeneralReportGenerator() {
   // Q&A ASSISTANT STATE
   const [customQuestion, setCustomQuestion] = useState<string>("");
   const [askingQuestion, setAskingQuestion] = useState<boolean>(false);
-  const [qaAnswer, setQaAnswer] = useState<AIAnswerResponse | null>(null);
+  const [qaAnswer, setQaAnswer] = useState<SmartAnswerResponse | null>(null);
   const [cachedMetrics, setCachedMetrics] = useState<TermReportMetrics | null>(null);
 
   const handleBack = () => {
@@ -104,17 +108,17 @@ export default function GeneralReportGenerator() {
       await new Promise((r) => setTimeout(r, 600));
 
       setProgressStep("3/3 Finalizing report structure & formatting...");
-      const aiReport = await generateAIReport(selectedReportType, metrics);
+      const smartReport = await generateSmartReport(selectedReportType, metrics);
 
-      setReport(aiReport);
-      setEditedTitle(aiReport.title);
-      setEditedExecutiveSummary(aiReport.executiveSummary);
-      setEditedMarkdownContent(aiReport.markdownContent);
-      setEditedRecommendations(aiReport.recommendations || []);
+      setReport(smartReport);
+      setEditedTitle(smartReport.title);
+      setEditedExecutiveSummary(smartReport.executiveSummary);
+      setEditedMarkdownContent(smartReport.markdownContent);
+      setEditedRecommendations(smartReport.recommendations || []);
 
       showToast({ message: "Executive Administrative Report generated successfully.", type: "success" });
     } catch (error) {
-      console.error("AI Report generation error:", error);
+      console.error("Smart Report generation error:", error);
       showToast({ message: "Failed to generate report. Please retry.", type: "error" });
     } finally {
       setGenerating(false);
@@ -133,20 +137,20 @@ export default function GeneralReportGenerator() {
     setQaAnswer(null);
     try {
       const metrics = await getOrFetchMetrics();
-      const answer = await answerAIQuestion(qToAsk, metrics);
+      const answer = await answerSmartQuestion(qToAsk, metrics);
       setQaAnswer(answer);
       if (!queryText) setCustomQuestion("");
     } catch (e) {
-      console.error("Error asking AI question:", e);
+      console.error("Error asking smart question:", e);
       showToast({ message: "Failed to answer question. Please retry.", type: "error" });
     } finally {
       setAskingQuestion(false);
     }
   };
 
-  const syncEditedReport = (): GeneratedAIReport | null => {
+  const syncEditedReport = (): GeneratedSmartReport | null => {
     if (!report) return null;
-    const updated: GeneratedAIReport = {
+    const updated: GeneratedSmartReport = {
       ...report,
       title: editedTitle,
       executiveSummary: editedExecutiveSummary,
@@ -186,7 +190,7 @@ export default function GeneralReportGenerator() {
 
   const handleExportQAPDF = async () => {
     if (!qaAnswer) return;
-    const tempReport: GeneratedAIReport = {
+    const tempReport: GeneratedSmartReport = {
       title: `Executive Q&A Analysis: ${qaAnswer.question}`,
       reportType: "general_term",
       generatedAt: new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }),

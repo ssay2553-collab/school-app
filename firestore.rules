@@ -34,7 +34,10 @@ service cloud.firestore {
 
  function isAdmin() {
   return userData() != null
-    && userData().role == "admin";
+    && (
+      userData().get('role', '') == "admin" ||
+      userData().get(['profile', 'role'], '') == "admin"
+    );
 }
 
    function isSuperAdmin() {
@@ -51,9 +54,9 @@ service cloud.firestore {
 
     function getPermission(screen) {
       return userData() != null
-        && ("permissions" in userData())
-        && (screen in userData().permissions)
-        ? userData().permissions[screen]
+        ? userData().get(['permissions', screen],
+            userData().get(['profile', 'permissions', screen], 'deny')
+          )
         : "deny";
     }
 
@@ -156,10 +159,11 @@ function hasScreenPermission(screen, level) {
 
 
     function isTeacher() {
-  return request.auth != null
-    && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
-}
+      return userData() != null && (
+        userData().get('role', '') == 'teacher' ||
+        userData().get(['profile', 'role'], '') == 'teacher'
+      );
+    }
 
     // Helper: Check if teacher is the official class teacher for a specific class or Teacher on Duty
     function isClassTeacher(classId) {

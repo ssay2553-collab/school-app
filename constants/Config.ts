@@ -13,6 +13,8 @@ const mapConfig = (id: string, data: any) => ({
   schoolId: id,
   name: data.name || data.schoolName || "School App",
   fullName: data.fullName || data.schoolFullName || "Educational Center",
+  slug: data.slug || id,
+  emailDomain: data.emailDomain || data.slug || id,
   motto: data.motto || "",
   hotline: data.hotline || data.schoolHotline || "",
   address: data.address || data.schoolAddress || "",

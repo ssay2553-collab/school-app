@@ -38,9 +38,18 @@ export default function TeacherAttendanceConfigScreen() {
 
   const [loading, setLoading] = useState(false);
   const [fetchingLocation, setFetchingLocation] = useState(false);
-  const [latitude, setLatitude] = useState<string>('');
-  const [longitude, setLongitude] = useState<string>('');
-  const [radius, setRadius] = useState<string>('100'); // default 100 meters range for school campus coverage
+
+  interface SchoolLocation {
+    id: string;
+    name: string;
+    latitude: string;
+    longitude: string;
+    radius: string;
+  }
+
+  const [locations, setLocations] = useState<SchoolLocation[]>([
+    { id: '1', name: 'Main Campus / Block A', latitude: '', longitude: '', radius: '100' }
+  ]);
   const [lateTime, setLateTime] = useState<string>('07:15'); // default late threshold time e.g. 07:15 AM
   const [configId, setConfigId] = useState<string>('');
   const [savedConfig, setSavedConfig] = useState<any>(null);
@@ -64,26 +73,70 @@ export default function TeacherAttendanceConfigScreen() {
       if (snap.exists()) {
         const data = snap.data();
         setSavedConfig(data);
-        if (data.latitude !== undefined && data.latitude !== null) setLatitude(data.latitude.toString());
-        if (data.longitude !== undefined && data.longitude !== null) setLongitude(data.longitude.toString());
-        if (data.radius !== undefined && data.radius !== null) setRadius(data.radius.toString());
         if (data.lateTime) setLateTime(data.lateTime);
         if (data.configId) setConfigId(data.configId);
         if (data.holidays && Array.isArray(data.holidays)) setHolidays(data.holidays);
+
+        if (data.locations && Array.isArray(data.locations) && data.locations.length > 0) {
+          setLocations(
+            data.locations.map((l: any, idx: number) => ({
+              id: l.id || `loc_${idx + 1}`,
+              name: l.name || `Campus Block ${idx + 1}`,
+              latitude: l.latitude !== undefined && l.latitude !== null ? l.latitude.toString() : '',
+              longitude: l.longitude !== undefined && l.longitude !== null ? l.longitude.toString() : '',
+              radius: l.radius !== undefined && l.radius !== null ? l.radius.toString() : '100',
+            }))
+          );
+        } else if (data.latitude !== undefined && data.longitude !== undefined) {
+          setLocations([
+            {
+              id: '1',
+              name: 'Main Campus / Block A',
+              latitude: data.latitude.toString(),
+              longitude: data.longitude.toString(),
+              radius: data.radius !== undefined ? data.radius.toString() : '100',
+            },
+          ]);
+        }
       }
     } catch (err) {
       console.error('Error fetching teacher attendance config:', err);
     }
   };
 
-  const handleAutoGenerateLocation = async (showToastMessage = true) => {
+  const handleAddLocationBlock = () => {
+    setLocations([
+      ...locations,
+      {
+        id: `loc_${Date.now()}`,
+        name: `Annex / Block ${String.fromCharCode(65 + locations.length)}`,
+        latitude: '',
+        longitude: '',
+        radius: locations[0]?.radius || '100',
+      },
+    ]);
+  };
+
+  const handleRemoveLocationBlock = (id: string) => {
+    if (locations.length <= 1) {
+      showToast({ message: 'You must maintain at least one school location block.', type: 'error' });
+      return;
+    }
+    setLocations(locations.filter(l => l.id !== id));
+  };
+
+  const handleUpdateLocationField = (id: string, field: keyof SchoolLocation, value: string) => {
+    setLocations(
+      locations.map(l => (l.id === id ? { ...l, [field]: value } : l))
+    );
+  };
+
+  const handleAutoGenerateLocationForBlock = async (id: string) => {
     setFetchingLocation(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        if (showToastMessage) {
-          showToast({ message: 'Permission to access location was denied', type: 'error' });
-        }
+        showToast({ message: 'Permission to access location was denied', type: 'error' });
         setFetchingLocation(false);
         return;
       }
@@ -92,11 +145,9 @@ export default function TeacherAttendanceConfigScreen() {
       try {
         location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       } catch (highErr) {
-        console.warn('High accuracy GPS failed, falling back to balanced accuracy:', highErr);
         try {
           location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         } catch (balErr) {
-          console.warn('Balanced accuracy GPS failed, trying last known position:', balErr);
           location = await Location.getLastKnownPositionAsync();
         }
       }
@@ -109,44 +160,55 @@ export default function TeacherAttendanceConfigScreen() {
       const lngStr = location.coords.longitude.toString();
       const accuracyMeters = location.coords.accuracy ? Math.round(location.coords.accuracy) : null;
 
-      setLatitude(latStr);
-      setLongitude(lngStr);
-      if (showToastMessage) {
-        const accInfo = accuracyMeters ? ` (Accuracy: ±${accuracyMeters}m)` : '';
-        showToast({ message: `GPS coordinates auto-generated successfully!${accInfo}`, type: 'success' });
-      }
+      setLocations(
+        locations.map(l => (l.id === id ? { ...l, latitude: latStr, longitude: lngStr } : l))
+      );
+      const accInfo = accuracyMeters ? ` (Accuracy: ±${accuracyMeters}m)` : '';
+      showToast({ message: `GPS coordinates auto-generated for block successfully!${accInfo}`, type: 'success' });
     } catch (err) {
       console.error('Error auto-generating location:', err);
-      if (showToastMessage) {
-        showToast({ message: 'Failed to auto-generate GPS location. Please ensure location services are enabled.', type: 'error' });
-      }
+      showToast({ message: 'Failed to auto-generate GPS location.', type: 'error' });
     } finally {
       setFetchingLocation(false);
     }
   };
 
   const handleSaveConfig = async () => {
-    if (!latitude || !longitude) {
-      showToast({ message: 'Please provide or auto-generate valid GPS coordinates.', type: 'error' });
+    if (locations.length === 0) {
+      showToast({ message: 'Please add at least one school location block.', type: 'error' });
       return;
     }
 
-    const cleanLatStr = latitude.toString().trim().replace(',', '.');
-    const cleanLngStr = longitude.toString().trim().replace(',', '.');
-    const cleanRadiusStr = radius.toString().trim().replace(',', '.');
+    const parsedLocations = [];
+    for (const loc of locations) {
+      if (!loc.latitude || !loc.longitude) {
+        showToast({ message: `Please provide or auto-generate GPS coordinates for "${loc.name || 'Block'}".`, type: 'error' });
+        return;
+      }
+      const cleanLat = loc.latitude.toString().trim().replace(',', '.');
+      const cleanLng = loc.longitude.toString().trim().replace(',', '.');
+      const cleanRad = loc.radius.toString().trim().replace(',', '.');
 
-    const latNum = parseFloat(cleanLatStr);
-    const lngNum = parseFloat(cleanLngStr);
-    const radiusNum = parseFloat(cleanRadiusStr) || 100;
+      const latNum = parseFloat(cleanLat);
+      const lngNum = parseFloat(cleanLng);
+      const radiusNum = parseFloat(cleanRad) || 100;
 
-    if (isNaN(latNum) || isNaN(lngNum) || latNum < -90 || latNum > 90 || lngNum < -180 || lngNum > 180) {
-      showToast({ message: 'Invalid latitude (-90 to 90) or longitude (-180 to 180) values.', type: 'error' });
-      return;
-    }
+      if (isNaN(latNum) || isNaN(lngNum) || latNum < -90 || latNum > 90 || lngNum < -180 || lngNum > 180) {
+        showToast({ message: `Invalid latitude/longitude values for "${loc.name}".`, type: 'error' });
+        return;
+      }
+      if (radiusNum < 10) {
+        showToast({ message: `Allowed radius for "${loc.name}" must be at least 10 meters.`, type: 'error' });
+        return;
+      }
 
-    if (radiusNum < 10) {
-      showToast({ message: 'Allowed radius must be at least 10 meters.', type: 'error' });
-      return;
+      parsedLocations.push({
+        id: loc.id,
+        name: loc.name.trim() || 'Campus Block',
+        latitude: latNum,
+        longitude: lngNum,
+        radius: radiusNum,
+      });
     }
 
     // Normalize late time input (e.g. "7:15", "7.15", "715" -> "07:15")
@@ -183,9 +245,11 @@ export default function TeacherAttendanceConfigScreen() {
       const payload = {
         schoolId,
         configId: newConfigId,
-        latitude: latNum,
-        longitude: lngNum,
-        radius: radiusNum,
+        locations: parsedLocations,
+        // Backward compatibility primary fields
+        latitude: parsedLocations[0].latitude,
+        longitude: parsedLocations[0].longitude,
+        radius: parsedLocations[0].radius,
         lateTime: formattedLateTime,
         holidays,
         updatedBy: appUser?.uid || 'admin',
@@ -196,7 +260,7 @@ export default function TeacherAttendanceConfigScreen() {
       await setDoc(doc(db, 'teacherAttendanceConfig', schoolId), payload, { merge: true });
       setConfigId(newConfigId);
       setSavedConfig(payload);
-      showToast({ message: 'Staff attendance GPS configuration saved successfully!', type: 'success' });
+      showToast({ message: 'Staff attendance multi-location GPS configuration saved successfully!', type: 'success' });
     } catch (err) {
       console.error('Error saving attendance config:', err);
       showToast({ message: 'Failed to save attendance configuration.', type: 'error' });
@@ -262,73 +326,103 @@ export default function TeacherAttendanceConfigScreen() {
         </TouchableOpacity>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>📍 GPS Range & Late Time Configuration</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <Text style={styles.sectionTitle}>📍 Multi-Location / School Blocks Setup</Text>
+            <TouchableOpacity
+              onPress={handleAddLocationBlock}
+              style={{ backgroundColor: `${primary}15`, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <SVGIcon name="add" size={16} color={primary} />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: primary }}>Add Block</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.sectionSub}>
-            Auto-generate school GPS coordinates, define the allowed check-in range in meters, and set the late threshold time (e.g. 08:15 AM).
+            Configure GPS coordinates and range for all school blocks/locations (e.g., Main Campus, Annex, Second Location) so teachers anywhere on campus can successfully check in.
           </Text>
 
-          <TouchableOpacity
-            style={[styles.locationBtn, { backgroundColor: primary }]}
-            onPress={() => handleAutoGenerateLocation(true)}
-            disabled={fetchingLocation}
-          >
-            {fetchingLocation ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <>
-                <SVGIcon name="location" size={18} color="#fff" />
-                <Text style={styles.locationBtnText}>Auto-Generate Current GPS Coordinates</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          {locations.map((loc) => (
+            <View key={loc.id} style={{ backgroundColor: '#f8fafc', borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#e2e8f0' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <TextInput
+                  style={[styles.input, { flex: 1, fontWeight: '700', color: primary, marginRight: 10, height: 40 }]}
+                  placeholder="Block Name (e.g. Main Campus / Block A)"
+                  placeholderTextColor="#94a3b8"
+                  value={loc.name}
+                  onChangeText={(val) => handleUpdateLocationField(loc.id, 'name', val)}
+                />
+                {locations.length > 1 && (
+                  <TouchableOpacity
+                    onPress={() => handleRemoveLocationBlock(loc.id)}
+                    style={{ padding: 8, backgroundColor: '#fee2e2', borderRadius: 8 }}
+                  >
+                    <SVGIcon name="close" size={16} color="#ef4444" />
+                  </TouchableOpacity>
+                )}
+              </View>
 
-          <View style={styles.inputRow}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Latitude</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 5.6037"
-                placeholderTextColor="#94a3b8"
-                value={latitude}
-                onChangeText={setLatitude}
-                keyboardType="decimal-pad"
-              />
-            </View>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Longitude</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. -0.1870"
-                placeholderTextColor="#94a3b8"
-                value={longitude}
-                onChangeText={setLongitude}
-                keyboardType="decimal-pad"
-              />
-            </View>
-          </View>
+              <TouchableOpacity
+                style={[styles.locationBtn, { backgroundColor: primary, marginBottom: 10, paddingVertical: 8 }]}
+                onPress={() => handleAutoGenerateLocationForBlock(loc.id)}
+                disabled={fetchingLocation}
+              >
+                {fetchingLocation ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <SVGIcon name="location" size={16} color="#fff" />
+                    <Text style={[styles.locationBtnText, { fontSize: 12 }]}>Capture Current GPS for {loc.name || 'this Block'}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
 
-          <View style={styles.inputRow}>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Allowed Range (Meters)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 100"
-                placeholderTextColor="#94a3b8"
-                value={radius}
-                onChangeText={setRadius}
-                keyboardType="numeric"
-              />
+              <View style={styles.inputRow}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Latitude</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 5.6037"
+                    placeholderTextColor="#94a3b8"
+                    value={loc.latitude}
+                    onChangeText={(val) => handleUpdateLocationField(loc.id, 'latitude', val)}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Longitude</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. -0.1870"
+                    placeholderTextColor="#94a3b8"
+                    value={loc.longitude}
+                    onChangeText={(val) => handleUpdateLocationField(loc.id, 'longitude', val)}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Allowed Range (Meters)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 100"
+                  placeholderTextColor="#94a3b8"
+                  value={loc.radius}
+                  onChangeText={(val) => handleUpdateLocationField(loc.id, 'radius', val)}
+                  keyboardType="numeric"
+                />
+              </View>
             </View>
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Late Threshold Time (HH:MM)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 07:15"
-                placeholderTextColor="#94a3b8"
-                value={lateTime}
-                onChangeText={setLateTime}
-              />
-            </View>
+          ))}
+
+          <View style={{ marginTop: 10, marginBottom: 16 }}>
+            <Text style={styles.label}>Late Threshold Time (HH:MM)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 07:15"
+              placeholderTextColor="#94a3b8"
+              value={lateTime}
+              onChangeText={setLateTime}
+            />
           </View>
 
           {/* Preset Quick-Select Time Chips */}
@@ -360,7 +454,7 @@ export default function TeacherAttendanceConfigScreen() {
             ))}
           </View>
           <Text style={styles.hint}>
-            Recommended range: <Text style={{ fontWeight: '700', color: primary }}>100 – 200 meters</Text> to cover classrooms/buildings and account for indoor GPS drift. Check-ins after {lateTime || '08:15'} will automatically be evaluated and marked as <Text style={{ fontWeight: '700', color: '#d97706' }}>Late</Text>.
+            Recommended range: <Text style={{ fontWeight: '700', color: primary }}>100 – 200 meters</Text> per block. Check-ins after {lateTime || '08:15'} will automatically be evaluated and marked as <Text style={{ fontWeight: '700', color: '#d97706' }}>Late</Text>.
           </Text>
 
           <TouchableOpacity

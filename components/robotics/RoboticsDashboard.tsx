@@ -7,6 +7,7 @@ interface RoboticsDashboardProps {
   activeTab: string;
   onChangeTab: (tab: string) => void;
   primaryColor: string;
+  isTeacherOrAdmin?: boolean;
   children: React.ReactNode;
 }
 
@@ -30,9 +31,11 @@ const isColorLight = (color: string) => {
   return brightness > 160;
 };
 
-export function RoboticsDashboard({ activeTab, onChangeTab, primaryColor, children }: RoboticsDashboardProps) {
+export function RoboticsDashboard({ activeTab, onChangeTab, primaryColor, isTeacherOrAdmin = false, children }: RoboticsDashboardProps) {
   // Use vibrant indigo if primaryColor is light or undefined to ensure high contrast
   const effectiveActiveColor = isColorLight(primaryColor) ? '#4F46E5' : (primaryColor || '#4F46E5');
+
+  const visibleTabs = TABS.filter((tab) => tab.id !== 'teacher' || isTeacherOrAdmin);
 
   return (
     <View style={styles.container}>
@@ -44,7 +47,7 @@ export function RoboticsDashboard({ activeTab, onChangeTab, primaryColor, childr
           style={styles.tabScrollView}
           contentContainerStyle={styles.tabContainer}
         >
-          {TABS.map((tab) => {
+          {visibleTabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const bg = isActive ? effectiveActiveColor : '#F1F5F9';
             const textCol = isActive ? '#FFFFFF' : '#1E293B';

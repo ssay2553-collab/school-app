@@ -107,21 +107,81 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
     return Object.values(itemMap);
   }, [selectedStudent]);
 
-  const categories = [
-    { key: "general", label: "General Fee (Waterfall)", amount: selectedStudent?.currentBalance || 0 },
-    { key: "tuition", label: "Tuition Fee", amount: tuitionBal },
-    { key: "pta", label: "PTA Dues", amount: selectedStudent?.ptaBalance || 0 },
-    { key: "maintenance", label: "Maintenance Dues", amount: selectedStudent?.maintenanceBalance || 0 },
-    { key: "admission", label: "Admission Fee", amount: selectedStudent?.admissionBalance || 0 },
-    { key: "books", label: "Books / Stationary", amount: selectedStudent?.booksBalance || 0 },
-    { key: "uniform", label: "Uniform Fee", amount: selectedStudent?.uniformBalance || 0 },
-    { key: "other", label: "Other Charges (All)", amount: selectedStudent?.otherBalance || 0 },
+  const rawCategories = [
+    {
+      key: "general",
+      label: "General Fee (Waterfall)",
+      amount: selectedStudent?.currentBalance || 0,
+      alwaysShow: true,
+    },
+    {
+      key: "tuition",
+      label: "Tuition Fee",
+      amount: tuitionBal,
+      show:
+        tuitionBal > 0 ||
+        (Number(selectedStudent?.termBill) || 0) > 0 ||
+        (Number(selectedStudent?.currentBalance) || 0) > 0 ||
+        (Number(selectedStudent?.arrears) || 0) > 0,
+    },
+    {
+      key: "pta",
+      label: "PTA Dues",
+      amount: selectedStudent?.ptaBalance || 0,
+      show:
+        (Number(selectedStudent?.ptaBill) || 0) > 0 ||
+        (Number(selectedStudent?.ptaBalance) || 0) > 0,
+    },
+    {
+      key: "maintenance",
+      label: "Maintenance Dues",
+      amount: selectedStudent?.maintenanceBalance || 0,
+      show:
+        (Number(selectedStudent?.maintenanceBill) || 0) > 0 ||
+        (Number(selectedStudent?.maintenanceBalance) || 0) > 0,
+    },
+    {
+      key: "admission",
+      label: "Admission Fee",
+      amount: selectedStudent?.admissionBalance || 0,
+      show:
+        (Number(selectedStudent?.admissionBill) || 0) > 0 ||
+        (Number(selectedStudent?.admissionBalance) || 0) > 0,
+    },
+    {
+      key: "books",
+      label: "Books / Stationary",
+      amount: selectedStudent?.booksBalance || 0,
+      show:
+        (Number(selectedStudent?.booksBill) || 0) > 0 ||
+        (Number(selectedStudent?.booksBalance) || 0) > 0,
+    },
+    {
+      key: "uniform",
+      label: "Uniform Fee",
+      amount: selectedStudent?.uniformBalance || 0,
+      show:
+        (Number(selectedStudent?.uniformBill) || 0) > 0 ||
+        (Number(selectedStudent?.uniformBalance) || 0) > 0,
+    },
+    {
+      key: "other",
+      label: "Other Charges (All)",
+      amount: selectedStudent?.otherBalance || 0,
+      show:
+        (Number(selectedStudent?.otherBill) || 0) > 0 ||
+        (Number(selectedStudent?.otherBalance) || 0) > 0 ||
+        otherSubItems.length > 0,
+    },
     ...otherSubItems.map((sub) => ({
       key: `other:${sub.category}`,
       label: `Other: ${sub.category}`,
-      amount: sub.balance > 0 ? sub.balance : 0,
+      amount: sub.balance > 0 ? sub.balance : (sub.billed > 0 ? sub.billed : 0),
+      show: sub.billed > 0 || sub.balance > 0,
     })),
   ];
+
+  const categories = rawCategories.filter((cat) => cat.alwaysShow || cat.show);
 
   return (
     <Modal
